@@ -92,3 +92,27 @@ pnpm typecheck            # Type-check all packages
 - `PORT` - Server port (default 3000)
 
 The frontend has no `.env` — it fetches Firebase config from `GET /api/config` at startup.
+
+## Deployment
+
+- **Hosting**: Railway (Dockerfile-based deploy)
+- **Production URL**: https://skate5.rivertrail-labs.com
+- **GitHub**: https://github.com/makarandp0/skate5
+- **Branch**: `master` (auto-deploys on push)
+- **Docker**: Multi-stage build — entrypoint runs migrations then starts server
+- **Local prod test**: `pnpm prod:up` (builds image + Postgres on port 3001)
+
+### Deploy workflow
+```bash
+git push                  # Triggers Railway auto-deploy from master
+railway up --detach       # Manual deploy from local (bypasses git)
+railway logs              # View production logs
+railway status            # Check service health
+```
+
+### Railway CLI
+```bash
+railway link --project skate5 --service "skate5 app"   # Link to app service
+railway variables list                                  # View env vars
+railway variables set KEY=value                         # Set env var
+```
