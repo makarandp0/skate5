@@ -1,11 +1,24 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { z } from "zod";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-};
+const appConfigSchema = z.object({
+  apiKey: z.string(),
+  authDomain: z.string(),
+  projectId: z.string(),
+  appId: z.string(),
+});
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+let app: FirebaseApp;
+let auth: Auth;
+
+export async function initFirebase(): Promise<void> {
+  const res = await fetch("/api/config");
+  const config = appConfigSchema.parse(await res.json());
+  app = initializeApp(config);
+  auth = getAuth(app);
+}
+
+export function getFirebaseAuth(): Auth {
+  return auth;
+}

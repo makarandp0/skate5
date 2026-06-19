@@ -1,68 +1,33 @@
-export type UserRole = "admin" | "instructor" | "member";
+import { z } from "zod";
+import {
+  userRoleSchema,
+  rsvpStatusSchema,
+  userSchema,
+  skateClassSchema,
+  signupSchema,
+  badgeSchema,
+  gridEntrySchema,
+  chatSchema,
+  chatMessageSchema,
+  createClassSchema,
+  rsvpRequestSchema,
+  createBadgeSchema,
+  createGridEntrySchema,
+  sendMessageSchema,
+} from "./schemas.js";
 
-export type RsvpStatus = "yes" | "no" | "maybe" | "none";
+export type UserRole = z.infer<typeof userRoleSchema>;
+export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
+export type User = z.infer<typeof userSchema>;
+export type SkateClass = z.infer<typeof skateClassSchema>;
+export type Signup = z.infer<typeof signupSchema>;
+export type Badge = z.infer<typeof badgeSchema>;
+export type GridEntry = z.infer<typeof gridEntrySchema>;
+export type Chat = z.infer<typeof chatSchema>;
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
 
-export interface User {
-  id: string;
-  firebaseUid: string;
-  email: string;
-  displayName: string;
-  photoUrl: string | null;
-  role: UserRole;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SkateClass {
-  id: string;
-  title: string;
-  description: string | null;
-  date: string;
-  time: string | null;
-  status: "draft" | "published" | "cancelled";
-  gridPublished: boolean;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Signup {
-  id: string;
-  classId: string;
-  userId: string;
-  rsvp: RsvpStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Badge {
-  id: string;
-  text: string;
-  group: string | null;
-  color: string;
-}
-
-export interface GridEntry {
-  id: string;
-  classId: string;
-  order: number;
-  badgeId: string | null;
-  time: string | null;
-  description: string | null;
-  instructorIds: string[];
-}
-
-export interface Chat {
-  id: string;
-  title: string | null;
-  topicId: string | null;
-  createdAt: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  chatId: string;
-  userId: string;
-  text: string;
-  createdAt: string;
-}
+export type CreateClassInput = z.infer<typeof createClassSchema>;
+export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
+export type CreateBadgeInput = z.infer<typeof createBadgeSchema>;
+export type CreateGridEntryInput = z.infer<typeof createGridEntrySchema>;
+export type SendMessageInput = z.infer<typeof sendMessageSchema>;

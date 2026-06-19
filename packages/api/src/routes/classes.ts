@@ -1,66 +1,92 @@
 import { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { registerRoutes, RouteHandlers } from "@skate5/shared";
 import { db } from "../db/index.js";
-import { classes, signups } from "../db/schema.js";
+import { toSkateClass, toSignup, toBadge } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
 
-export async function classRoutes(app: FastifyInstance) {
-  app.addHook("onRequest", authenticate);
+const handlers: RouteHandlers = {
+  getClasses: async () => {
+    const rows = await db.selectFrom("classes").selectAll().orderBy("date", "asc").execute();
+    return rows.map(toSkateClass);
+  },
 
-  app.get("/classes", async () => {
-    return db.select().from(classes).orderBy(classes.date);
-  });
+  getClass: async ({ params }) => {
+    const row = await db
+      .selectFrom("classes")
+      .selectAll()
+      .where("id", "=", params.id)
+      .executeTakeFirst();
+    return row ? toSkateClass(row) : null;
+  },
 
-  app.get("/classes/:id", async (request) => {
-    const { id } = request.params as { id: string };
-    const result = await db.select().from(classes).where(eq(classes.id, id));
-    return result[0] ?? null;
-  });
-
-  app.post("/classes", async (request, reply) => {
-    const body = request.body as {
-      title: string;
-      description?: string;
-      date: string;
-      time?: string;
-    };
-    const [created] = await db
-      .insert(classes)
+  createClass: async ({ body, user }) => {
+    const row = await db
+      .insertInto("classes")
       .values({
         title: body.title,
         description: body.description ?? null,
         date: body.date,
         time: body.time ?? null,
-        createdBy: request.user!.uid,
+        status: "draft",
+        created_by: user.uid,
       })
-      .returning();
-    return reply.status(201).send(created);
-  });
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return toSkateClass(row);
+  },
 
-  app.get("/classes/:id/signups", async (request) => {
-    const { id } = request.params as { id: string };
-    return db.select().from(signups).where(eq(signups.classId, id));
-  });
+  getClassSignups: async ({ params }) => {
+    const rows = await db
+      .selectFrom("signups")
+      .selectAll()
+      .where("class_id", "=", params.id)
+      .execute();
+    return rows.map(toSignup);
+  },
 
-  app.post("/classes/:id/rsvp", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const { rsvp } = request.body as { rsvp: string };
-    const userId = request.user!.uid;
-
+  rsvp: async ({ params, body, user }) => {
     const existing = await db
-      .select()
-      .from(signups)
-      .where(eq(signups.classId, id));
-    const userSignup = existing.find((s) => s.userId === userId);
+      .selectFrom("signups")
+      .selectAll()
+      .where("class_id", "=", params.id)
+      .where("user_id", "=", user.uid)
+      .executeTakeFirst();
 
-    if (userSignup) {
+    if (existing) {
       await db
-        .update(signups)
-        .set({ rsvp, updatedAt: new Date() })
-        .where(eq(signups.id, userSignup.id));
+        .updateTable("signups")
+        .set({ rsvp: body.rsvp, updated_at: new Date() })
+        .where("id", "=", existing.id)
+        .execute();
     } else {
-      await db.insert(signups).values({ classId: id, userId, rsvp });
+      await db
+        .insertInto("signups")
+        .values({ class_id: params.id, user_id: user.uid, rsvp: body.rsvp })
+        .execute();
     }
-    return reply.status(200).send({ ok: true });
-  });
+    return { ok: true };
+  },
+
+  getBadges: async () => {
+    const rows = await db.selectFrom("badges").selectAll().execute();
+    return rows.map(toBadge);
+  },
+
+  createBadge: async ({ body }) => {
+    const row = await db
+      .insertInto("badges")
+      .values({
+        text: body.text,
+        group: body.group ?? null,
+        color: body.color,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return toBadge(row);
+  },
+};
+
+export function classRoutes(app: FastifyInstance): void {
+  app.addHook("onRequest", authenticate);
+  registerRoutes(app, handlers);
 }

@@ -5,10 +5,10 @@ Skateboarding class management platform. Successor to skate4 (Firebase-based). B
 ## Stack
 
 - **Monorepo**: pnpm workspaces
-- **Backend**: Fastify 5 + Drizzle ORM + PostgreSQL
+- **Backend**: Fastify 5 + Kysely + PostgreSQL
 - **Frontend**: React 19 + Vite 6 + Tailwind CSS 4 + shadcn/ui
 - **Auth**: Firebase Auth (token validation on backend via firebase-admin)
-- **Language**: TypeScript 5.7 (strict mode)
+- **Language**: TypeScript 6 (strict mode)
 
 ## Structure
 
@@ -23,22 +23,37 @@ packages/
 
 ```bash
 pnpm install              # Install all dependencies
+pnpm db:up                # Start Postgres via Docker
+pnpm db:create <name>     # Create a new TS migration file
+pnpm db:migrate           # Run pending migrations
 pnpm dev                  # Start all packages in dev mode
 pnpm dev:api              # Start API server only (port 3000)
 pnpm dev:web              # Start web dev server only (port 5173)
 pnpm build                # Build all packages
+pnpm lint                 # Lint all packages (type-aware)
 pnpm typecheck            # Type-check all packages
-pnpm db:generate          # Generate Drizzle migrations from schema changes
-pnpm db:migrate           # Run pending migrations
-pnpm db:studio            # Open Drizzle Studio (DB browser)
 ```
+
+## Type Safety Rules
+
+- **Never use type assertions** (`as Foo`). Use Zod `.parse()` to validate unknown data and derive the type at runtime.
+- **Never use `any`**. Use `unknown` and narrow with Zod or type guards.
+- **Never define types manually** if a Zod schema exists — use `z.infer<>`.
+- **All API boundaries must be validated at runtime** with Zod schemas (incoming requests, external API responses, fetched config).
+- **Prefer compile-time errors over runtime errors.** If the type system can catch it, don't defer to a runtime check.
+- **Route contracts live in `packages/shared/src/contract.ts`** — both the API handlers and the frontend client are typed against this contract. Adding or changing a route means updating the contract first; the compiler will guide the rest.
+- **DB row → API response mapping** must go through explicit mapper functions (in `packages/api/src/db/mappers.ts`) that validate enum values at runtime rather than using `as` casts.
+- **Exhaustive switches** — When switching on a union/enum type, always handle every case and add a `default: _value satisfies never` to get a compile error if a variant is added later.
+- ESLint enforces these rules: `consistent-type-assertions: never`, `no-explicit-any`, `no-unsafe-*`. Do not add new `eslint-disable` comments without a justification in the comment.
 
 ## Development Guidelines
 
 ### Database
-- Schema lives in `packages/api/src/db/schema.ts`
-- After modifying the schema, run `pnpm db:generate` then `pnpm db:migrate`
-- Use Drizzle query builder, not raw SQL
+- Kysely type definitions in `packages/api/src/db/types.ts`
+- Migrations are TypeScript files in `packages/api/src/db/migrations/`
+- Create a migration: `pnpm db:create <name>` (generates timestamped `.ts` file with up/down)
+- Run migrations: `pnpm db:migrate`
+- Use the Kysely query builder; avoid raw SQL unless necessary
 
 ### API
 - All routes go in `packages/api/src/routes/`
@@ -53,8 +68,10 @@ pnpm db:studio            # Open Drizzle Studio (DB browser)
 - Use `cn()` utility for conditional class names
 
 ### Shared
-- Put types used by both api and web in `packages/shared/src/types.ts`
-- Keep this package dependency-free (types only)
+- Define all data shapes as Zod 4 schemas in `packages/shared/src/schemas.ts`
+- Types are derived via `z.infer<>` in `packages/shared/src/types.ts` — never define types manually
+- Use shared schemas for request validation in the API and form validation in the frontend
+- Zod 4 idioms: use `z.email()` (not `z.string().email()`), `z.iso.datetime()` (not `z.string().datetime()`), `z.int()` (not `z.number().int()`)
 
 ## Domain Concepts
 
@@ -68,10 +85,10 @@ pnpm db:studio            # Open Drizzle Studio (DB browser)
 
 ### API (`packages/api/.env`)
 - `DATABASE_URL` - PostgreSQL connection string
-- `FIREBASE_PROJECT_ID` - Firebase project ID for token verification
+- `FIREBASE_SERVICE_ACCOUNT_BASE64` - Base64-encoded service account JSON (project-level)
+- `FIREBASE_CLIENT_API_KEY` - Web API key (from Firebase Console > Your Apps)
+- `FIREBASE_CLIENT_APP_ID` - Web app ID (from Firebase Console > Your Apps)
+- `FIREBASE_AUTH_DOMAIN` - Optional, defaults to `{projectId}.firebaseapp.com`
 - `PORT` - Server port (default 3000)
 
-### Web (`packages/web/.env`)
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
+The frontend has no `.env` — it fetches Firebase config from `GET /api/config` at startup.
