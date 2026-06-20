@@ -13,6 +13,8 @@ type SkateClass = z.infer<typeof skateClassSchema>;
 type Signup = z.infer<typeof signupSchema>;
 type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 
+const noSignups: Signup[] = [];
+
 export function ClassDetail() {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
@@ -25,16 +27,18 @@ export function ClassDetail() {
     if (!id) return;
     Promise.all([
       api.getClass({ params: { id } }),
-      api.getClassSignups({ params: { id } }).catch(() => [] as Signup[]),
+      api.getClassSignups({ params: { id } }).catch(() => noSignups),
     ]).then(([cls, sigs]) => {
       setSkateClass(cls);
       setSignups(sigs);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      setLoading(false);
+    });
   }, [id]);
 
   const mySignup = signups.find((s) => s.userId === profile?.id);
-  const currentRsvp: RsvpStatus = (mySignup?.rsvp as RsvpStatus) ?? "none";
+  const currentRsvp: RsvpStatus = mySignup?.rsvp ?? "none";
 
   async function handleRsvp(rsvp: RsvpStatus) {
     if (!id || rsvpLoading) return;
