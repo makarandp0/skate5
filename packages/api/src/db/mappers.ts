@@ -1,4 +1,33 @@
-import type { SkateClass, Signup, Badge } from "@skate5/shared";
+import type { User, SkateClass, Signup, Badge } from "@skate5/shared";
+
+interface UserRow {
+  id: string;
+  firebase_uid: string;
+  email: string;
+  display_name: string;
+  photo_url: string | null;
+  role: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+function assertUserRole(s: string): User["role"] {
+  if (s === "admin" || s === "instructor" || s === "member") return s;
+  throw new Error(`Invalid user role: ${s}`);
+}
+
+export function toUser(row: UserRow): User {
+  return {
+    id: row.id,
+    firebaseUid: row.firebase_uid,
+    email: row.email,
+    displayName: row.display_name,
+    photoUrl: row.photo_url,
+    role: assertUserRole(row.role),
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
 
 interface ClassRow {
   id: string;

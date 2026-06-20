@@ -7,6 +7,10 @@ import "./app.css";
 
 await initFirebase();
 
+if (import.meta.env.DEV) {
+  document.title = "Skate5 (local)";
+}
+
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing root element");
 
@@ -15,5 +19,5 @@ createRoot(root).render(
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </StrictMode>
+  </StrictMode>,
 );

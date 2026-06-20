@@ -22,12 +22,12 @@ type ClientArgs<R extends RouteDefinition> =
       : { params: InferParams<R> }
     : R["body"] extends z.ZodType
       ? { body: InferBody<R> }
-      : undefined;
+      : Record<string, never> | undefined;
 
 export type ApiClient = {
-  [K in keyof Contract]: (
-    args: ClientArgs<Contract[K]>
-  ) => Promise<InferResponse<Contract[K]>>;
+  [K in keyof Contract]: ClientArgs<Contract[K]> extends Record<string, never> | undefined
+    ? (args?: ClientArgs<Contract[K]>) => Promise<InferResponse<Contract[K]>>
+    : (args: ClientArgs<Contract[K]>) => Promise<InferResponse<Contract[K]>>;
 };
 
 function buildPath(

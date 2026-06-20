@@ -1,10 +1,19 @@
 import { FastifyInstance } from "fastify";
 import { registerRoutes, RouteHandlers } from "@skate5/shared";
 import { db } from "../db/index.js";
-import { toSkateClass, toSignup, toBadge } from "../db/mappers.js";
+import { toUser, toSkateClass, toSignup, toBadge } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
 
 const handlers: RouteHandlers = {
+  getMe: async ({ user }) => {
+    const row = await db
+      .selectFrom("users")
+      .selectAll()
+      .where("id", "=", user.uid)
+      .executeTakeFirstOrThrow();
+    return toUser(row);
+  },
+
   getClasses: async () => {
     const rows = await db.selectFrom("classes").selectAll().orderBy("date", "asc").execute();
     return rows.map(toSkateClass);

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  userSchema,
   skateClassSchema,
   signupSchema,
   badgeSchema,
@@ -17,6 +18,11 @@ export type RouteDefinition = {
 };
 
 export const contract = {
+  getMe: {
+    method: "GET",
+    path: "/me",
+    response: userSchema,
+  },
   getClasses: {
     method: "GET",
     path: "/classes",
