@@ -177,7 +177,13 @@ function reserveFormatAreas(reserved: boolean[][]): void {
   for (let i = 0; i <= 8; i += 1) {
     reserved[8][i] = true;
     reserved[i][8] = true;
+  }
+
+  for (let i = 0; i < 8; i += 1) {
     reserved[8][size - 1 - i] = true;
+  }
+
+  for (let i = 0; i < 7; i += 1) {
     reserved[size - 1 - i][8] = true;
   }
 }

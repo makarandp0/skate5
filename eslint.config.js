@@ -22,7 +22,20 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-member-access": "error",
       "@typescript-eslint/no-unsafe-return": "error",
       "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-use-before-define": [
+        "error",
+        {
+          classes: true,
+          enums: true,
+          functions: false,
+          ignoreTypeReferences: true,
+          typedefs: false,
+          variables: true,
+        },
+      ],
       "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "func-style": ["warn", "expression", { allowArrowFunctions: true }],
+      "prefer-arrow-callback": "warn",
     },
   },
   {
