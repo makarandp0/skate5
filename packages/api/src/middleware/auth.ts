@@ -34,13 +34,20 @@ export async function authenticate(
       .executeTakeFirst();
 
     if (!row) {
+      const displayName =
+        typeof decoded.name === "string"
+          ? decoded.name
+          : decoded.email ?? "User";
+      const photoUrl =
+        typeof decoded.picture === "string" ? decoded.picture : null;
+
       row = await db
         .insertInto("users")
         .values({
           firebase_uid: decoded.uid,
           email: decoded.email ?? "",
-          display_name: decoded.name ?? decoded.email ?? "User",
-          photo_url: decoded.picture ?? null,
+          display_name: displayName,
+          photo_url: photoUrl,
           role: "member",
         })
         .returning(["id", "email"])

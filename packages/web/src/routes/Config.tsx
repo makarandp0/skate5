@@ -38,9 +38,17 @@ type FirebaseClientConfig = {
   appId: string;
 };
 
+const getDefaultAppUrl = (): string => {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEV_ORIGIN) {
+    return import.meta.env.VITE_DEV_ORIGIN;
+  }
+
+  return window.location.origin;
+};
+
 export function Config() {
   const { profile } = useAuth();
-  const [appUrl, setAppUrl] = useState(() => window.location.origin);
+  const [appUrl, setAppUrl] = useState(getDefaultAppUrl);
   const [devStatus, setDevStatus] = useState<DevStatus | null>(null);
   const [firebaseConfig, setFirebaseConfig] =
     useState<FirebaseClientConfig | null>(null);
@@ -52,7 +60,7 @@ export function Config() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadStatus() {
+    const loadStatus = async (): Promise<void> => {
       try {
         const [configRes, statusRes] = await Promise.all([
           fetch("/api/config"),
@@ -69,7 +77,7 @@ export function Config() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
+    };
 
     void loadStatus();
 
@@ -94,7 +102,7 @@ export function Config() {
     { label: "Authenticated as", value: profile?.email ?? "Unknown" },
   ];
 
-  async function copyAppUrl() {
+  const copyAppUrl = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(appUrl);
       setCopyState("copied");
@@ -105,7 +113,7 @@ export function Config() {
         setCopyState("idle");
       }, 1800);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -325,22 +333,33 @@ function StatusBadge({ online }: { online: boolean }) {
 }
 
 function QrPreview({ matrix }: { matrix: boolean[][] }) {
+  const quietZone = 4;
+  const viewBoxSize = matrix.length + quietZone * 2;
+
   return (
-    <div
-      className="grid aspect-square w-full max-w-[180px] border border-border bg-white p-2"
-      style={{ gridTemplateColumns: `repeat(${String(matrix.length)}, 1fr)` }}
+    <svg
+      className="aspect-square w-full max-w-[180px] border border-border bg-white"
+      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
+      shapeRendering="crispEdges"
       aria-label="QR code for app URL"
       role="img"
     >
+      <rect width={viewBoxSize} height={viewBoxSize} fill="white" />
       {matrix.flatMap((row, y) =>
-        row.map((dark, x) => (
-          <span
-            key={`${String(x)}-${String(y)}`}
-            className={dark ? "bg-black" : "bg-white"}
-          />
-        ))
+        row.map((dark, x) =>
+          dark ? (
+            <rect
+              key={`${String(x)}-${String(y)}`}
+              x={x + quietZone}
+              y={y + quietZone}
+              width="1"
+              height="1"
+              fill="black"
+            />
+          ) : null
+        )
       )}
-    </div>
+    </svg>
   );
 }
 
