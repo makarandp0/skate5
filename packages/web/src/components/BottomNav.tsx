@@ -1,11 +1,8 @@
 import { NavLink } from "react-router-dom";
-import { Calendar, User } from "lucide-react";
 import { cn } from "../lib/utils.js";
+import { appNavItems } from "../lib/navigation.js";
 
-const links = [
-  { to: "/", icon: Calendar, label: "Classes" },
-  { to: "/profile", icon: User, label: "Profile" },
-] as const;
+const links = appNavItems.filter((item) => item.showInBottomNav);
 
 export function BottomNav() {
   return (
@@ -15,6 +12,7 @@ export function BottomNav() {
           <NavLink
             key={to}
             to={to}
+            end={to === "/"}
             className={({ isActive }) =>
               cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs",
