@@ -1,5 +1,6 @@
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { z } from "zod";
+import { config } from "../config.js";
 
 const serviceAccountSchema = z.object({
   project_id: z.string(),
@@ -19,12 +20,9 @@ let cachedClientConfig: ClientConfig | null = null;
 export function initFirebaseAdmin(): void {
   if (getApps().length > 0) return;
 
-  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-  if (!base64) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
-  }
-
-  const json = Buffer.from(base64, "base64").toString("utf-8");
+  const json = Buffer.from(config.firebase.serviceAccountBase64, "base64").toString(
+    "utf-8"
+  );
   const serviceAccount = serviceAccountSchema.parse(JSON.parse(json));
 
   initializeApp({
@@ -35,19 +33,13 @@ export function initFirebaseAdmin(): void {
     }),
   });
 
-  const apiKey = process.env.FIREBASE_CLIENT_API_KEY;
-  const appId = process.env.FIREBASE_CLIENT_APP_ID;
-  if (!apiKey || !appId) {
-    throw new Error("FIREBASE_CLIENT_API_KEY and FIREBASE_CLIENT_APP_ID are required");
-  }
-
   cachedClientConfig = {
-    apiKey,
+    apiKey: config.firebase.clientApiKey,
     authDomain:
-      process.env.FIREBASE_AUTH_DOMAIN ??
+      config.firebase.authDomain ??
       `${serviceAccount.project_id}.firebaseapp.com`,
     projectId: serviceAccount.project_id,
-    appId,
+    appId: config.firebase.clientAppId,
   };
 }
 

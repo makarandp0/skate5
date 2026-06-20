@@ -6,6 +6,7 @@ import { Login } from "./routes/Login.js";
 import { ClassList } from "./routes/ClassList.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
 import { Profile } from "./routes/Profile.js";
+import { Config } from "./routes/Config.js";
 import type { ReactNode } from "react";
 
 export function App() {
@@ -37,6 +38,14 @@ export function App() {
               element={
                 <RequireAuth>
                   <Profile />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/config"
+              element={
+                <RequireAuth>
+                  <Config />
                 </RequireAuth>
               }
             />

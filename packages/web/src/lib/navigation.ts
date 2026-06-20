@@ -1,4 +1,4 @@
-import { Calendar, User, type LucideIcon } from "lucide-react";
+import { Calendar, Settings, User, type LucideIcon } from "lucide-react";
 
 export type AppNavItem = {
   to: string;
@@ -22,5 +22,12 @@ export const appNavItems: AppNavItem[] = [
     label: "Profile",
     showInTopNav: true,
     showInBottomNav: true,
+  },
+  {
+    to: "/config",
+    icon: Settings,
+    label: "Config",
+    showInTopNav: false,
+    showInBottomNav: false,
   },
 ];
