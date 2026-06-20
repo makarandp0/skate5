@@ -6,7 +6,9 @@ import {
   type ReactNode,
 } from "react";
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   GoogleAuthProvider,
@@ -24,6 +26,8 @@ type AuthState = {
   profile: AppUser | null;
   loading: boolean;
   signIn: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
 };
 
@@ -40,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!u) {
         setProfile(null);
         setLoading(false);
+      } else {
+        setLoading(true);
       }
     });
     return unsubscribe;
@@ -68,13 +74,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithPopup(getFirebaseAuth(), provider);
   }
 
+  async function signInWithEmail(email: string, password: string) {
+    await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+  }
+
+  async function signUpWithEmail(email: string, password: string) {
+    const credential = await createUserWithEmailAndPassword(
+      getFirebaseAuth(),
+      email,
+      password
+    );
+    await credential.user.getIdToken(true);
+  }
+
   async function logOut() {
     await signOut(getFirebaseAuth());
     setProfile(null);
   }
 
   return (
-    <AuthContext value={{ firebaseUser, profile, loading, signIn, logOut }}>
+    <AuthContext
+      value={{
+        firebaseUser,
+        profile,
+        loading,
+        signIn,
+        signInWithEmail,
+        signUpWithEmail,
+        logOut,
+      }}
+    >
       {children}
     </AuthContext>
   );
