@@ -7,6 +7,7 @@ import { appNavItems, type AppNavItem } from "../lib/navigation.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { useTheme } from "../hooks/useTheme.js";
+import skateJourneysIcon from "../assets/skate-journeys-icon.jpg";
 
 export const Header = () => {
   const { profile, logOut } = useAuth();
@@ -62,13 +63,31 @@ export const Header = () => {
       ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link to="/" className="text-lg font-bold">
-          Skate5
+        <Link
+          to="/"
+          className="group flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-white p-1 shadow-sm shadow-slate-900/10"
+          >
+            <img
+              src={skateJourneysIcon}
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </span>
+          <span className="leading-none">
+            <span className="block text-base font-bold">Skate5</span>
+            <span className="hidden text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:block">
+              Class crew
+            </span>
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 sm:flex">
+        <nav className="hidden items-center gap-1 rounded-lg border border-border/70 bg-background/60 p-1 sm:flex">
           {visibleNavItems
             .filter((item) => item.showInTopNav)
             .map(({ to, label }) => (
@@ -78,10 +97,10 @@ export const Header = () => {
                 end={to === "/"}
                 className={({ isActive }) =>
                   cn(
-                    "text-sm transition-colors",
+                    "rounded-md px-3 py-1.5 text-sm transition-colors",
                     isActive
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                   )
                 }
               >
@@ -104,7 +123,7 @@ export const Header = () => {
           {profile && (
             <Link
               to="/profile"
-              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-full ring-2 ring-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Open profile"
             >
               <Avatar
@@ -133,10 +152,10 @@ export const Header = () => {
             <div
               id="app-menu"
               role="menu"
-              className="absolute right-0 top-11 w-56 overflow-hidden rounded-md border border-border bg-background shadow-lg"
+              className="absolute right-0 top-11 w-60 overflow-hidden rounded-lg border border-border/80 bg-background/95 shadow-xl shadow-slate-900/10 backdrop-blur dark:shadow-black/30"
             >
               {profile && (
-                <div className="border-b border-border px-3 py-2">
+                <div className="border-b border-border/80 bg-muted/40 px-3 py-2.5">
                   <p className="truncate text-sm font-medium">
                     {profile.displayName}
                   </p>
@@ -154,7 +173,7 @@ export const Header = () => {
                     role="menuitem"
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-muted",
+                        "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted/80",
                         isActive
                           ? "bg-primary/10 font-medium text-primary"
                           : "text-muted-foreground hover:text-foreground"
@@ -175,7 +194,7 @@ export const Header = () => {
                       setMenuOpen(false);
                       void logOut();
                     }}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
                   >
                     <LogOut size={16} />
                     <span>Sign out</span>

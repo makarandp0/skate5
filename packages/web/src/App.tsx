@@ -26,49 +26,57 @@ const AuthBottomNav = () => {
 export const App = () => {
   return (
     <ThemeProvider>
-    <AuthProvider>
-      <div className="min-h-screen bg-background text-foreground">
-        <Header />
-        <main className="mx-auto max-w-4xl px-4 pb-20 pt-6 sm:px-6 sm:pb-8">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <RequireAuth>
-                  <ClassList />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/classes/:id"
-              element={
-                <RequireAuth>
-                  <ClassDetail />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <RequireAuth>
-                  <Profile />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/config"
-              element={
-                <RequireAuth>
-                  <Config />
-                </RequireAuth>
-              }
-            />
-          </Routes>
-        </main>
-        <AuthBottomNav />
-      </div>
-    </AuthProvider>
+      <AuthProvider>
+        <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-x-0 top-0 h-52 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(245,184,46,0.16)_45%,rgba(31,157,135,0.12))] dark:bg-[linear-gradient(135deg,rgba(96,165,250,0.16),rgba(246,196,81,0.12)_45%,rgba(53,189,165,0.12))]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(37,99,235,0.08),transparent)] dark:bg-[linear-gradient(0deg,rgba(96,165,250,0.09),transparent)]"
+          />
+          <Header />
+          <main className="relative mx-auto max-w-4xl px-4 pb-24 pt-6 sm:px-6 sm:pb-10">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={
+                  <RequireAuth>
+                    <ClassList />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/classes/:id"
+                element={
+                  <RequireAuth>
+                    <ClassDetail />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <RequireAuth>
+                    <Profile />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/config"
+                element={
+                  <RequireAuth>
+                    <Config />
+                  </RequireAuth>
+                }
+              />
+            </Routes>
+          </main>
+          <AuthBottomNav />
+        </div>
+      </AuthProvider>
     </ThemeProvider>
   );
 };
