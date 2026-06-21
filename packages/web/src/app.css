@@ -13,6 +13,11 @@
   --color-secondary-foreground: #211a06;
   --color-accent: #1f9d87;
   --color-accent-foreground: #ffffff;
+  --color-calendar-paper: #ffffff;
+  --color-calendar-paper-foreground: #0f172a;
+  --color-calendar-footer: #f1f5f9;
+  --color-calendar-footer-foreground: #334155;
+  --color-calendar-footer-border: #dbe3ea;
   --color-border: #dde3e6;
   --color-ring: #2563eb;
   --radius: 0.625rem;
@@ -29,6 +34,11 @@
   --color-secondary-foreground: #181200;
   --color-accent: #35bda5;
   --color-accent-foreground: #061a16;
+  --color-calendar-paper: #f8fafc;
+  --color-calendar-paper-foreground: #0f172a;
+  --color-calendar-footer: #e8eef4;
+  --color-calendar-footer-foreground: #22313f;
+  --color-calendar-footer-border: #cbd5df;
   --color-border: #2b3a44;
   --color-ring: #60a5fa;
 }

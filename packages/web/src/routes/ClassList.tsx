@@ -11,6 +11,13 @@ import type { skateClassSchema } from "@skate5/shared";
 
 type SkateClass = z.infer<typeof skateClassSchema>;
 
+const getSortableDateTime = (value: string): number => {
+  const date = new Date(value.includes("T") ? value : value + "T00:00:00");
+  const time = date.getTime();
+
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+};
+
 const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
   return (
     <span
@@ -128,7 +135,7 @@ export const ClassList = () => {
   }
 
   const sorted = [...classes].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => getSortableDateTime(b.date) - getSortableDateTime(a.date)
   );
   const publishedCount = classes.filter((item) => item.status === "published")
     .length;
