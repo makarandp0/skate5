@@ -2,6 +2,7 @@ import { useState, type SyntheticEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { Button } from "../components/ui/Button.js";
+import brandBanner from "../assets/skate-journeys-banner.png";
 
 const getAuthErrorMessage = (err: unknown): string => {
   if (err instanceof Error) {
@@ -60,98 +61,132 @@ export const Login = () => {
   const isSignUp = mode === "sign-up";
 
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center gap-6 px-4">
-      <div>
-        <h1 className="text-2xl font-bold">Skate5</h1>
-        <p className="mt-2 text-muted-foreground">
-          Sign in to view classes and RSVP
-        </p>
+    <div className="mx-auto grid min-h-[68vh] max-w-3xl items-center gap-6 md:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="hidden md:block">
+        <div className="rounded-lg border border-border/80 bg-background/75 p-5 shadow-lg shadow-slate-900/10 backdrop-blur">
+          <img
+            src={brandBanner}
+            alt="Skate Journeys"
+            className="h-auto w-full rounded-md bg-white p-3"
+          />
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-medium text-muted-foreground">
+            <span className="rounded-md bg-primary/10 px-2 py-2 text-primary">
+              Classes
+            </span>
+            <span className="rounded-md bg-secondary/25 px-2 py-2 text-secondary-foreground">
+              RSVPs
+            </span>
+            <span className="rounded-md bg-accent/10 px-2 py-2 text-accent">
+              Crews
+            </span>
+          </div>
+        </div>
       </div>
 
       <form
-        className="space-y-4"
+        className="rounded-lg border border-border/80 bg-background/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur sm:p-6"
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
       >
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-            }}
-            required
-            className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+        <div className="mb-5">
+          <img
+            src={brandBanner}
+            alt="Skate Journeys"
+            className="mb-5 h-auto w-48 rounded-md bg-white p-2 shadow-sm md:hidden"
           />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={isSignUp ? "new-password" : "current-password"}
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-            }}
-            required
-            minLength={6}
-            className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-
-        {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
+          <h1 className="text-2xl font-bold">Skate5</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to view classes and RSVP.
           </p>
-        )}
+        </div>
 
-        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-          {submitting
-            ? "Please wait..."
-            : isSignUp
-              ? "Create account"
-              : "Sign in"}
-        </Button>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+              }}
+              required
+              className="h-11 w-full rounded-md border border-border bg-background/80 px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+              }}
+              required
+              minLength={6}
+              className="h-11 w-full rounded-md border border-border bg-background/80 px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={submitting}
+          >
+            {submitting
+              ? "Please wait..."
+              : isSignUp
+                ? "Create account"
+                : "Sign in"}
+          </Button>
+
+          <button
+            type="button"
+            className="w-full text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            onClick={() => {
+              setError(null);
+              setMode(isSignUp ? "sign-in" : "sign-up");
+            }}
+          >
+            {isSignUp
+              ? "Already have an account? Sign in"
+              : "New here? Create an account"}
+          </button>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            <span>or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            size="lg"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              void signIn();
+            }}
+          >
+            Sign in with Google
+          </Button>
+        </div>
       </form>
-
-      <button
-        type="button"
-        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        onClick={() => {
-          setError(null);
-          setMode(isSignUp ? "sign-in" : "sign-up");
-        }}
-      >
-        {isSignUp
-          ? "Already have an account? Sign in"
-          : "New here? Create an account"}
-      </button>
-
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <div className="h-px flex-1 bg-border" />
-        <span>or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <Button
-        size="lg"
-        variant="outline"
-        onClick={() => {
-          void signIn();
-        }}
-      >
-        Sign in with Google
-      </Button>
     </div>
   );
 };
