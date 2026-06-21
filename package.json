@@ -10,9 +10,9 @@
     "dev": "pnpm --filter @skate5/api --filter @skate5/web run dev",
     "dev:api": "pnpm --filter @skate5/api run dev",
     "dev:web": "pnpm --filter @skate5/web run dev",
-    "build": "pnpm --filter ./packages/* run build",
+    "build": "pnpm --filter './packages/*' run build",
     "lint": "eslint packages/",
-    "typecheck": "pnpm --filter ./packages/* run typecheck",
+    "typecheck": "pnpm --filter './packages/*' run typecheck",
     "db:create": "pnpm --filter @skate5/api run db:create",
     "db:migrate": "pnpm --filter @skate5/api run db:migrate",
     "db:import": "tsx scripts/migrate-firebase.ts"
@@ -30,10 +30,10 @@
     "zod": "^4.4.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "volta": {
-    "node": "20.20.2",
+    "node": "22.14.0",
     "pnpm": "10.34.3"
   },
   "pnpm": {
