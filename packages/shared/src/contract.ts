@@ -7,17 +7,25 @@ import {
   createClassSchema,
   rsvpRequestSchema,
   createBadgeSchema,
+  firebaseClientConfigSchema,
 } from "./schemas.js";
 
 export type RouteDefinition = {
   method: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
+  auth?: "required" | "none";
   params?: z.ZodType;
   body?: z.ZodType;
   response: z.ZodType;
 };
 
 export const contract = {
+  getConfig: {
+    method: "GET",
+    path: "/config",
+    auth: "none",
+    response: firebaseClientConfigSchema,
+  },
   getMe: {
     method: "GET",
     path: "/me",

@@ -1,4 +1,5 @@
 import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { firebaseClientConfigSchema, type FirebaseClientConfig } from "@skate5/shared";
 import { z } from "zod";
 import { config } from "../config.js";
 
@@ -8,14 +9,7 @@ const serviceAccountSchema = z.object({
   client_email: z.string(),
 });
 
-interface ClientConfig {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  appId: string;
-}
-
-let cachedClientConfig: ClientConfig | null = null;
+let cachedClientConfig: FirebaseClientConfig | null = null;
 
 export const initFirebaseAdmin = (): void => {
   if (getApps().length > 0) return;
@@ -33,17 +27,18 @@ export const initFirebaseAdmin = (): void => {
     }),
   });
 
-  cachedClientConfig = {
+  cachedClientConfig = firebaseClientConfigSchema.parse({
     apiKey: config.firebase.clientApiKey,
     authDomain:
       config.firebase.authDomain ??
       `${serviceAccount.project_id}.firebaseapp.com`,
     projectId: serviceAccount.project_id,
     appId: config.firebase.clientAppId,
-  };
+    commitSha: config.commitSha,
+  });
 };
 
-export const getClientConfig = (): ClientConfig => {
+export const getClientConfig = (): FirebaseClientConfig => {
   if (!cachedClientConfig) {
     throw new Error("Firebase not initialized — call initFirebaseAdmin() first");
   }

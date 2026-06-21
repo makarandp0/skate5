@@ -35,6 +35,8 @@ export const registerRoutes = (
     RouteDefinition,
   ][]) {
     const handler = handlers[name];
+    if (!handler) continue;
+
     const method = route.method.toLowerCase() as HttpMethod;
 
     app[method](route.path, async (req: FastifyRequest) => {

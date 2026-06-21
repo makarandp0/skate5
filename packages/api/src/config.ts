@@ -1,6 +1,11 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const optionalNonEmptyStringSchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional()
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -10,6 +15,10 @@ const envSchema = z.object({
   FIREBASE_CLIENT_API_KEY: z.string().min(1),
   FIREBASE_CLIENT_APP_ID: z.string().min(1),
   FIREBASE_AUTH_DOMAIN: z.string().min(1).optional(),
+  RAILWAY_GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
+  GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
+  COMMIT_SHA: optionalNonEmptyStringSchema,
+  SOURCE_VERSION: optionalNonEmptyStringSchema,
 });
 
 const env = envSchema.parse(process.env);
@@ -44,6 +53,12 @@ export const config = {
     clientAppId: env.FIREBASE_CLIENT_APP_ID,
     authDomain: env.FIREBASE_AUTH_DOMAIN,
   },
+  commitSha:
+    env.RAILWAY_GIT_COMMIT_SHA ??
+    env.GIT_COMMIT_SHA ??
+    env.COMMIT_SHA ??
+    env.SOURCE_VERSION ??
+    null,
 };
 
 const formatDiagnosticValue = (
