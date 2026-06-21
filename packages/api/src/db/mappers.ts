@@ -11,12 +11,12 @@ interface UserRow {
   updated_at: Date;
 }
 
-function assertUserRole(s: string): User["role"] {
+const assertUserRole = (s: string): User["role"] => {
   if (s === "admin" || s === "instructor" || s === "member") return s;
   throw new Error(`Invalid user role: ${s}`);
-}
+};
 
-export function toUser(row: UserRow): User {
+export const toUser = (row: UserRow): User => {
   return {
     id: row.id,
     firebaseUid: row.firebase_uid,
@@ -27,7 +27,7 @@ export function toUser(row: UserRow): User {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
-}
+};
 
 interface ClassRow {
   id: string;
@@ -58,17 +58,17 @@ interface BadgeRow {
   color: string;
 }
 
-function assertClassStatus(s: string): SkateClass["status"] {
+const assertClassStatus = (s: string): SkateClass["status"] => {
   if (s === "draft" || s === "published" || s === "cancelled") return s;
   throw new Error(`Invalid class status: ${s}`);
-}
+};
 
-function assertRsvpStatus(s: string): Signup["rsvp"] {
+const assertRsvpStatus = (s: string): Signup["rsvp"] => {
   if (s === "yes" || s === "no" || s === "maybe" || s === "none") return s;
   throw new Error(`Invalid rsvp status: ${s}`);
-}
+};
 
-export function toSkateClass(row: ClassRow): SkateClass {
+export const toSkateClass = (row: ClassRow): SkateClass => {
   return {
     id: row.id,
     title: row.title,
@@ -81,9 +81,9 @@ export function toSkateClass(row: ClassRow): SkateClass {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
-}
+};
 
-export function toSignup(row: SignupRow): Signup {
+export const toSignup = (row: SignupRow): Signup => {
   return {
     id: row.id,
     classId: row.class_id,
@@ -92,8 +92,8 @@ export function toSignup(row: SignupRow): Signup {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
-}
+};
 
-export function toBadge(row: BadgeRow): Badge {
+export const toBadge = (row: BadgeRow): Badge => {
   return row;
-}
+};

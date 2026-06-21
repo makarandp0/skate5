@@ -30,18 +30,18 @@ export type ApiClient = {
     : (args: ClientArgs<Contract[K]>) => Promise<InferResponse<Contract[K]>>;
 };
 
-function buildPath(
+const buildPath = (
   template: string,
   params: Record<string, string> | undefined
-): string {
+): string => {
   if (!params) return template;
   return template.replace(/:(\w+)/g, (_, key: string) => encodeURIComponent(params[key]));
-}
+};
 
-export function createApiClient(options: {
+export const createApiClient = (options: {
   baseUrl: string;
   getToken: () => Promise<string>;
-}): ApiClient {
+}): ApiClient => {
   const client = {} as Record<string, (args: unknown) => Promise<unknown>>;
 
   for (const [name, route] of Object.entries(contract) as [string, RouteDefinition][]) {
@@ -65,4 +65,4 @@ export function createApiClient(options: {
   }
 
   return client as unknown as ApiClient;
-}
+};

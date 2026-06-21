@@ -27,15 +27,15 @@ export default tseslint.config(
         {
           classes: true,
           enums: true,
-          functions: false,
+          functions: true,
           ignoreTypeReferences: true,
           typedefs: false,
           variables: true,
         },
       ],
       "@typescript-eslint/switch-exhaustiveness-check": "error",
-      "func-style": ["warn", "expression", { allowArrowFunctions: true }],
-      "prefer-arrow-callback": "warn",
+      "func-style": ["error", "expression", { allowArrowFunctions: true }],
+      "prefer-arrow-callback": "error",
     },
   },
   {

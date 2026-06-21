@@ -6,7 +6,7 @@ type AvatarProps = {
   className?: string;
 };
 
-export function Avatar({ src, name, className }: AvatarProps) {
+export const Avatar = ({ src, name, className }: AvatarProps) => {
   const initials = name
     .split(" ")
     .map((w) => w[0])
@@ -34,4 +34,4 @@ export function Avatar({ src, name, className }: AvatarProps) {
       {initials}
     </div>
   );
-}
+};

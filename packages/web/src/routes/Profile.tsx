@@ -4,7 +4,7 @@ import { Avatar } from "../components/ui/Avatar.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 
-export function Profile() {
+export const Profile = () => {
   const { profile, loading, logOut } = useAuth();
 
   if (loading) return null;
@@ -31,4 +31,4 @@ export function Profile() {
       </Button>
     </div>
   );
-}
+};

@@ -9,13 +9,13 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getInitialTheme(): Theme {
+const getInitialTheme = (): Theme => {
   const stored = localStorage.getItem("skate5-theme");
   if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+};
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
@@ -32,10 +32,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext>
   );
-}
+};
 
-export function useTheme() {
+export const useTheme = (): ThemeContextValue => {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
-}
+};

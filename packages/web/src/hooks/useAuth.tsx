@@ -33,7 +33,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,28 +69,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [firebaseUser]);
 
-  async function signIn() {
+  const signIn = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(getFirebaseAuth(), provider);
-  }
+  };
 
-  async function signInWithEmail(email: string, password: string) {
+  const signInWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<void> => {
     await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
-  }
+  };
 
-  async function signUpWithEmail(email: string, password: string) {
+  const signUpWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<void> => {
     const credential = await createUserWithEmailAndPassword(
       getFirebaseAuth(),
       email,
       password
     );
     await credential.user.getIdToken(true);
-  }
+  };
 
-  async function logOut() {
+  const logOut = async (): Promise<void> => {
     await signOut(getFirebaseAuth());
     setProfile(null);
-  }
+  };
 
   return (
     <AuthContext
@@ -107,10 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext>
   );
-}
+};
 
-export function useAuth(): AuthState {
+export const useAuth = (): AuthState => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
-}
+};

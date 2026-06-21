@@ -15,7 +15,35 @@ type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 
 const noSignups: Signup[] = [];
 
-export function ClassDetail() {
+const RsvpButton = ({
+  label,
+  active,
+  activeClass,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  active: boolean;
+  activeClass: string;
+  onClick: () => void;
+  disabled: boolean;
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
+        active ? activeClass : "bg-muted text-muted-foreground hover:bg-muted/80",
+        disabled && "opacity-50"
+      )}
+    >
+      {label}
+    </button>
+  );
+};
+
+export const ClassDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
   const [skateClass, setSkateClass] = useState<SkateClass | null>(null);
@@ -40,7 +68,7 @@ export function ClassDetail() {
   const mySignup = signups.find((s) => s.userId === profile?.id);
   const currentRsvp: RsvpStatus = mySignup?.rsvp ?? "none";
 
-  async function handleRsvp(rsvp: RsvpStatus) {
+  const handleRsvp = async (rsvp: RsvpStatus): Promise<void> => {
     if (!id || rsvpLoading) return;
     setRsvpLoading(true);
     try {
@@ -50,7 +78,7 @@ export function ClassDetail() {
     } finally {
       setRsvpLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -156,32 +184,4 @@ export function ClassDetail() {
       </Card>
     </div>
   );
-}
-
-function RsvpButton({
-  label,
-  active,
-  activeClass,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  active: boolean;
-  activeClass: string;
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
-        active ? activeClass : "bg-muted text-muted-foreground hover:bg-muted/80",
-        disabled && "opacity-50"
-      )}
-    >
-      {label}
-    </button>
-  );
-}
+};

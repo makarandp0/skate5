@@ -8,7 +8,7 @@ import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { useTheme } from "../hooks/useTheme.js";
 
-export function Header() {
+export const Header = () => {
   const { profile, logOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,19 +22,19 @@ export function Header() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    function handlePointerDown(event: PointerEvent) {
+    const handlePointerDown = (event: PointerEvent): void => {
       if (!(event.target instanceof Node)) return;
 
       if (!menuRef.current?.contains(event.target)) {
         setMenuOpen(false);
       }
-    }
+    };
 
-    function handleKeyDown(event: KeyboardEvent) {
+    const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setMenuOpen(false);
       }
-    }
+    };
 
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
@@ -188,4 +188,4 @@ export function Header() {
       </div>
     </header>
   );
-}
+};

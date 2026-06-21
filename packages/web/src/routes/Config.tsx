@@ -46,7 +46,173 @@ const getDefaultAppUrl = (): string => {
   return window.location.origin;
 };
 
-export function Config() {
+const getField = (value: unknown, key: string): unknown => {
+  if (typeof value !== "object" || value === null) return undefined;
+  return Reflect.get(value, key);
+};
+
+const getStringField = (value: unknown, key: string): string | null => {
+  const field = getField(value, key);
+  return typeof field === "string" ? field : null;
+};
+
+const getNumberField = (value: unknown, key: string): number | null => {
+  const field = getField(value, key);
+  return typeof field === "number" ? field : null;
+};
+
+const getBooleanField = (value: unknown, key: string): boolean | null => {
+  const field = getField(value, key);
+  return typeof field === "boolean" ? field : null;
+};
+
+const parseDevEnvEntry = (value: unknown): DevEnvEntry | null => {
+  const key = getStringField(value, "key");
+  const configured = getBooleanField(value, "configured");
+  const rawValue = getField(value, "value");
+
+  if (!key || configured === null) return null;
+
+  return {
+    key,
+    configured,
+    value: typeof rawValue === "string" ? rawValue : null,
+  };
+};
+
+const parseFirebaseClientConfig = (
+  value: unknown
+): FirebaseClientConfig | null => {
+  const apiKey = getStringField(value, "apiKey");
+  const authDomain = getStringField(value, "authDomain");
+  const projectId = getStringField(value, "projectId");
+  const appId = getStringField(value, "appId");
+
+  if (!apiKey || !authDomain || !projectId || !appId) return null;
+
+  return {
+    apiKey,
+    authDomain,
+    projectId,
+    appId,
+  };
+};
+
+const parseDevStatus = (value: unknown): DevStatus | null => {
+  const status = getStringField(value, "status");
+  const checkedAt = getStringField(value, "checkedAt");
+  const uptimeSeconds = getNumberField(value, "uptimeSeconds");
+  const nodeVersion = getStringField(value, "nodeVersion");
+  const environment = getStringField(value, "environment");
+  const staticServing = getBooleanField(value, "staticServing");
+  const envValue = getField(value, "env");
+
+  if (
+    !status ||
+    !checkedAt ||
+    uptimeSeconds === null ||
+    !nodeVersion ||
+    !environment ||
+    staticServing === null ||
+    !Array.isArray(envValue)
+  ) {
+    return null;
+  }
+
+  return {
+    status,
+    checkedAt,
+    uptimeSeconds,
+    nodeVersion,
+    environment,
+    staticServing,
+    env: envValue
+      .map(parseDevEnvEntry)
+      .filter((item): item is DevEnvEntry => item !== null),
+  };
+};
+
+const maskValue = (value: string): string => {
+  if (value.length <= 8) return `${String(value.length)} chars`;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
+
+const formatUptime = (totalSeconds: number): string => {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) return `${String(hours)}h ${String(minutes)}m`;
+  if (minutes > 0) return `${String(minutes)}m ${String(seconds)}s`;
+  return `${String(seconds)}s`;
+};
+
+const InfoGrid = ({ rows }: { rows: Array<{ label: string; value: string }> }) => {
+  return (
+    <dl className="grid gap-2">
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="grid gap-1 rounded-md bg-muted/60 px-3 py-2 sm:grid-cols-[140px_minmax(0,1fr)]"
+        >
+          <dt className="text-xs font-medium text-muted-foreground">
+            {row.label}
+          </dt>
+          <dd className="min-w-0 break-words text-sm">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+};
+
+const StatusBadge = ({ online }: { online: boolean }) => {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-medium",
+        online
+          ? "border-green-200 bg-green-50 text-green-700"
+          : "border-red-200 bg-red-50 text-red-700"
+      )}
+    >
+      {online ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+      {online ? "API online" : "API offline"}
+    </span>
+  );
+};
+
+const QrPreview = ({ matrix }: { matrix: boolean[][] }) => {
+  const quietZone = 4;
+  const viewBoxSize = matrix.length + quietZone * 2;
+
+  return (
+    <svg
+      className="aspect-square w-full max-w-[180px] border border-border bg-white"
+      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
+      shapeRendering="crispEdges"
+      aria-label="QR code for app URL"
+      role="img"
+    >
+      <rect width={viewBoxSize} height={viewBoxSize} fill="white" />
+      {matrix.flatMap((row, y) =>
+        row.map((dark, x) =>
+          dark ? (
+            <rect
+              key={`${String(x)}-${String(y)}`}
+              x={x + quietZone}
+              y={y + quietZone}
+              width="1"
+              height="1"
+              fill="black"
+            />
+          ) : null
+        )
+      )}
+    </svg>
+  );
+};
+
+export const Config = () => {
   const { profile } = useAuth();
   const [appUrl, setAppUrl] = useState(getDefaultAppUrl);
   const [devStatus, setDevStatus] = useState<DevStatus | null>(null);
@@ -296,168 +462,4 @@ export function Config() {
       </Card>
     </div>
   );
-}
-
-function InfoGrid({ rows }: { rows: Array<{ label: string; value: string }> }) {
-  return (
-    <dl className="grid gap-2">
-      {rows.map((row) => (
-        <div
-          key={row.label}
-          className="grid gap-1 rounded-md bg-muted/60 px-3 py-2 sm:grid-cols-[140px_minmax(0,1fr)]"
-        >
-          <dt className="text-xs font-medium text-muted-foreground">
-            {row.label}
-          </dt>
-          <dd className="min-w-0 break-words text-sm">{row.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function StatusBadge({ online }: { online: boolean }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-medium",
-        online
-          ? "border-green-200 bg-green-50 text-green-700"
-          : "border-red-200 bg-red-50 text-red-700"
-      )}
-    >
-      {online ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-      {online ? "API online" : "API offline"}
-    </span>
-  );
-}
-
-function QrPreview({ matrix }: { matrix: boolean[][] }) {
-  const quietZone = 4;
-  const viewBoxSize = matrix.length + quietZone * 2;
-
-  return (
-    <svg
-      className="aspect-square w-full max-w-[180px] border border-border bg-white"
-      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
-      shapeRendering="crispEdges"
-      aria-label="QR code for app URL"
-      role="img"
-    >
-      <rect width={viewBoxSize} height={viewBoxSize} fill="white" />
-      {matrix.flatMap((row, y) =>
-        row.map((dark, x) =>
-          dark ? (
-            <rect
-              key={`${String(x)}-${String(y)}`}
-              x={x + quietZone}
-              y={y + quietZone}
-              width="1"
-              height="1"
-              fill="black"
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  );
-}
-
-function maskValue(value: string): string {
-  if (value.length <= 8) return `${String(value.length)} chars`;
-  return `${value.slice(0, 4)}...${value.slice(-4)}`;
-}
-
-function parseFirebaseClientConfig(value: unknown): FirebaseClientConfig | null {
-  const apiKey = getStringField(value, "apiKey");
-  const authDomain = getStringField(value, "authDomain");
-  const projectId = getStringField(value, "projectId");
-  const appId = getStringField(value, "appId");
-
-  if (!apiKey || !authDomain || !projectId || !appId) return null;
-
-  return {
-    apiKey,
-    authDomain,
-    projectId,
-    appId,
-  };
-}
-
-function parseDevStatus(value: unknown): DevStatus | null {
-  const status = getStringField(value, "status");
-  const checkedAt = getStringField(value, "checkedAt");
-  const uptimeSeconds = getNumberField(value, "uptimeSeconds");
-  const nodeVersion = getStringField(value, "nodeVersion");
-  const environment = getStringField(value, "environment");
-  const staticServing = getBooleanField(value, "staticServing");
-  const envValue = getField(value, "env");
-
-  if (
-    !status ||
-    !checkedAt ||
-    uptimeSeconds === null ||
-    !nodeVersion ||
-    !environment ||
-    staticServing === null ||
-    !Array.isArray(envValue)
-  ) {
-    return null;
-  }
-
-  return {
-    status,
-    checkedAt,
-    uptimeSeconds,
-    nodeVersion,
-    environment,
-    staticServing,
-    env: envValue
-      .map(parseDevEnvEntry)
-      .filter((item): item is DevEnvEntry => item !== null),
-  };
-}
-
-function parseDevEnvEntry(value: unknown): DevEnvEntry | null {
-  const key = getStringField(value, "key");
-  const configured = getBooleanField(value, "configured");
-  const rawValue = getField(value, "value");
-
-  if (!key || configured === null) return null;
-
-  return {
-    key,
-    configured,
-    value: typeof rawValue === "string" ? rawValue : null,
-  };
-}
-
-function getStringField(value: unknown, key: string): string | null {
-  const field = getField(value, key);
-  return typeof field === "string" ? field : null;
-}
-
-function getNumberField(value: unknown, key: string): number | null {
-  const field = getField(value, key);
-  return typeof field === "number" ? field : null;
-}
-
-function getBooleanField(value: unknown, key: string): boolean | null {
-  const field = getField(value, key);
-  return typeof field === "boolean" ? field : null;
-}
-
-function getField(value: unknown, key: string): unknown {
-  if (typeof value !== "object" || value === null) return undefined;
-  return Reflect.get(value, key);
-}
-
-function formatUptime(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${String(hours)}h ${String(minutes)}m`;
-  if (minutes > 0) return `${String(minutes)}m ${String(seconds)}s`;
-  return `${String(seconds)}s`;
-}
+};

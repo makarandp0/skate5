@@ -26,7 +26,10 @@ export interface FastifyLike {
 
 type HttpMethod = "get" | "post" | "put" | "delete";
 
-export function registerRoutes(app: FastifyLike, handlers: RouteHandlers): void {
+export const registerRoutes = (
+  app: FastifyLike,
+  handlers: RouteHandlers
+): void => {
   for (const [name, route] of Object.entries(contract) as [
     keyof typeof contract,
     RouteDefinition,
@@ -42,4 +45,4 @@ export function registerRoutes(app: FastifyLike, handlers: RouteHandlers): void 
       return result;
     });
   }
-}
+};

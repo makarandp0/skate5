@@ -3,7 +3,25 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { Button } from "../components/ui/Button.js";
 
-export function Login() {
+const getAuthErrorMessage = (err: unknown): string => {
+  if (err instanceof Error) {
+    if (err.message.includes("auth/email-already-in-use")) {
+      return "That email already has an account. Try signing in instead.";
+    }
+    if (err.message.includes("auth/invalid-credential")) {
+      return "The email or password is incorrect.";
+    }
+    if (err.message.includes("auth/operation-not-allowed")) {
+      return "Email/password sign-in is not enabled for this Firebase project.";
+    }
+    if (err.message.includes("auth/weak-password")) {
+      return "Use a password with at least 6 characters.";
+    }
+  }
+  return "Something went wrong. Please try again.";
+};
+
+export const Login = () => {
   const {
     profile,
     loading,
@@ -20,7 +38,9 @@ export function Login() {
   if (loading) return null;
   if (profile) return <Navigate to="/" replace />;
 
-  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+  const handleSubmit = async (
+    event: SyntheticEvent<HTMLFormElement>
+  ): Promise<void> => {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
@@ -35,7 +55,7 @@ export function Login() {
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
   const isSignUp = mode === "sign-up";
 
@@ -134,22 +154,4 @@ export function Login() {
       </Button>
     </div>
   );
-}
-
-function getAuthErrorMessage(err: unknown): string {
-  if (err instanceof Error) {
-    if (err.message.includes("auth/email-already-in-use")) {
-      return "That email already has an account. Try signing in instead.";
-    }
-    if (err.message.includes("auth/invalid-credential")) {
-      return "The email or password is incorrect.";
-    }
-    if (err.message.includes("auth/operation-not-allowed")) {
-      return "Email/password sign-in is not enabled for this Firebase project.";
-    }
-    if (err.message.includes("auth/weak-password")) {
-      return "Use a password with at least 6 characters.";
-    }
-  }
-  return "Something went wrong. Please try again.";
-}
+};

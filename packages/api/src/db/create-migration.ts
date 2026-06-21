@@ -16,13 +16,13 @@ const filepath = path.join(__dirname, "migrations", filename);
 
 const template = `import { Kysely, sql } from "kysely";
 
-export async function up(db: Kysely<any>): Promise<void> {
+export const up = async (db: Kysely<any>): Promise<void> => {
   // Write your migration here
-}
+};
 
-export async function down(db: Kysely<any>): Promise<void> {
+export const down = async (db: Kysely<any>): Promise<void> => {
   // Write your rollback here
-}
+};
 `;
 
 await fs.writeFile(filepath, template);
