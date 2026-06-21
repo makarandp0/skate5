@@ -72,9 +72,9 @@ function ClassCard({ skateClass }: { skateClass: SkateClass }) {
 
   return (
     <Link to={`/classes/${skateClass.id}`}>
-      <Card className="flex items-center gap-4 transition-colors hover:bg-muted/50 active:bg-muted">
-        <div className="flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-md bg-muted">
-          <span className="text-xs font-medium text-muted-foreground">
+      <Card className="flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm">
+        <div className="flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10">
+          <span className="text-[10px] font-semibold uppercase text-primary">
             {isValidDate ? date.toLocaleDateString(undefined, { month: "short" }) : "—"}
           </span>
           <span className="text-lg font-bold leading-tight">
