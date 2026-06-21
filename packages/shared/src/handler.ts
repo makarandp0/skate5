@@ -18,7 +18,7 @@ export interface HandlerContext<R extends RouteDefinition> {
 }
 
 export type RouteHandlers = {
-  [K in keyof Contract]: (
+  [K in keyof Contract]?: (
     ctx: HandlerContext<Contract[K]>
   ) => Promise<InferResponse<Contract[K]>>;
 };

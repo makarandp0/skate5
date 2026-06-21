@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  firebaseClientConfigSchema,
+  type FirebaseClientConfig,
+} from "@skate5/shared";
 import {
   Activity,
   CheckCircle2,
@@ -30,13 +34,6 @@ type DevStatus = {
 };
 
 type DevEnvEntry = DevStatus["env"][number];
-
-type FirebaseClientConfig = {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  appId: string;
-};
 
 const getDefaultAppUrl = (): string => {
   if (import.meta.env.DEV && import.meta.env.VITE_DEV_ORIGIN) {
@@ -83,19 +80,8 @@ const parseDevEnvEntry = (value: unknown): DevEnvEntry | null => {
 const parseFirebaseClientConfig = (
   value: unknown
 ): FirebaseClientConfig | null => {
-  const apiKey = getStringField(value, "apiKey");
-  const authDomain = getStringField(value, "authDomain");
-  const projectId = getStringField(value, "projectId");
-  const appId = getStringField(value, "appId");
-
-  if (!apiKey || !authDomain || !projectId || !appId) return null;
-
-  return {
-    apiKey,
-    authDomain,
-    projectId,
-    appId,
-  };
+  const parsed = firebaseClientConfigSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 };
 
 const parseDevStatus = (value: unknown): DevStatus | null => {
@@ -147,7 +133,41 @@ const formatUptime = (totalSeconds: number): string => {
   return `${String(seconds)}s`;
 };
 
-const InfoGrid = ({ rows }: { rows: Array<{ label: string; value: string }> }) => {
+const formatCommitSha = (commitSha: string | null | undefined): string => {
+  return commitSha ? commitSha.slice(0, 12) : "Unavailable";
+};
+
+const getCommitUrl = (commitSha: string): string => {
+  return `https://github.com/makarandp0/skate5/commit/${encodeURIComponent(commitSha)}`;
+};
+
+const CommitValue = ({
+  commitSha,
+}: {
+  commitSha: string | null | undefined;
+}) => {
+  if (!commitSha) return "Unavailable";
+
+  const shortSha = formatCommitSha(commitSha);
+
+  return (
+    <a
+      className="font-medium text-primary underline-offset-4 hover:underline"
+      href={getCommitUrl(commitSha)}
+      rel="noreferrer"
+      target="_blank"
+      title={commitSha}
+    >
+      {shortSha}
+    </a>
+  );
+};
+
+const InfoGrid = ({
+  rows,
+}: {
+  rows: Array<{ label: string; value: ReactNode }>;
+}) => {
   return (
     <dl className="grid gap-2">
       {rows.map((row) => (
@@ -372,6 +392,10 @@ export const Config = () => {
               {
                 label: "Static serving",
                 value: devStatus ? String(devStatus.staticServing) : "Unknown",
+              },
+              {
+                label: "Commit",
+                value: <CommitValue commitSha={firebaseConfig?.commitSha} />,
               },
               {
                 label: "Uptime",

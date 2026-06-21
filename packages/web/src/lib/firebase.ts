@@ -1,21 +1,15 @@
-import { z } from "zod";
+import { firebaseClientConfigSchema } from "@skate5/shared";
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-
-const appConfigSchema = z.object({
-  apiKey: z.string(),
-  authDomain: z.string(),
-  projectId: z.string(),
-  appId: z.string(),
-});
 
 let app: FirebaseApp;
 let auth: Auth;
 
 export const initFirebase = async (): Promise<void> => {
   const res = await fetch("/api/config");
-  const config = appConfigSchema.parse(await res.json());
-  app = initializeApp(config);
+  const { apiKey, authDomain, projectId, appId } =
+    firebaseClientConfigSchema.parse(await res.json());
+  app = initializeApp({ apiKey, authDomain, projectId, appId });
   auth = getAuth(app);
 };
 

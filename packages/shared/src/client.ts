@@ -48,13 +48,18 @@ export const createApiClient = (options: {
     client[name] = async (args: unknown) => {
       const a = args as Record<string, unknown> | undefined;
       const path = buildPath(route.path, a?.params as Record<string, string> | undefined);
-      const token = await options.getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (route.auth !== "none") {
+        const token = await options.getToken();
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${options.baseUrl}${path}`, {
         method: route.method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: a?.body ? JSON.stringify(a.body) : undefined,
       });
       if (!res.ok) {

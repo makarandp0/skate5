@@ -69,6 +69,14 @@ export const chatMessageSchema = z.object({
   createdAt: z.iso.datetime(),
 });
 
+export const firebaseClientConfigSchema = z.object({
+  apiKey: z.string(),
+  authDomain: z.string(),
+  projectId: z.string(),
+  appId: z.string(),
+  commitSha: z.string().min(1).nullable(),
+});
+
 // Request/input schemas for API endpoints
 
 export const createClassSchema = z.object({
