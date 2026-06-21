@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { LogIn, LogOut, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { appNavItems, type AppNavItem } from "../lib/navigation.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
+import { useTheme } from "../hooks/useTheme.js";
 
 export const Header = () => {
   const { profile, logOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -78,7 +80,7 @@ export const Header = () => {
                   cn(
                     "text-sm transition-colors",
                     isActive
-                      ? "text-foreground font-medium"
+                      ? "text-primary font-medium"
                       : "text-muted-foreground hover:text-foreground"
                   )
                 }
@@ -89,6 +91,16 @@ export const Header = () => {
         </nav>
 
         <div className="relative flex items-center gap-2" ref={menuRef}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle theme"
+            onClick={toggleTheme}
+            className="h-9 w-9"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </Button>
           {profile && (
             <Link
               to="/profile"
@@ -144,7 +156,7 @@ export const Header = () => {
                       cn(
                         "flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-muted",
                         isActive
-                          ? "bg-muted font-medium text-foreground"
+                          ? "bg-primary/10 font-medium text-primary"
                           : "text-muted-foreground hover:text-foreground"
                       )
                     }

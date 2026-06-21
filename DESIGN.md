@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Fresh design — not a port of skate4. Modern, clean, and effortless.
+Modern and clean, with a touch of playfulness inspired by skate4. Not corporate-stiff, not cartoon-ish — approachable and warm.
 
 - **Simple use cases (view schedule, RSVP)**: Mobile-first. Must work beautifully on a phone at the skate park.
 - **Administrative use cases (create classes, manage grids, manage badges)**: Desktop-friendly is fine. Admins are typically on laptops.
@@ -22,11 +22,11 @@ Fresh design — not a port of skate4. Modern, clean, and effortless.
   - Classes (home), My RSVPs, Profile
   - Admin: additional "Manage" tab
 - **Desktop**: Top header bar with navigation links
-- **Active route**: Bold label + filled icon on mobile; underline on desktop
+- **Active route**: Blue (`text-primary`) + bold on mobile; blue text on desktop
 
 ## Color Palette
 
-Using CSS custom properties (defined in `app.css`) with automatic dark mode:
+Using CSS custom properties (defined in `app.css`) with class-based dark mode (`.dark` on `<html>`):
 
 | Token | Light | Dark | Usage |
 |-------|-------|------|-------|
@@ -34,15 +34,23 @@ Using CSS custom properties (defined in `app.css`) with automatic dark mode:
 | `foreground` | #0a0a0a | #fafafa | Primary text |
 | `muted` | #f5f5f5 | #262626 | Card backgrounds, secondary surfaces |
 | `muted-foreground` | #737373 | #a3a3a3 | Secondary text, labels |
-| `primary` | #18181b | #fafafa | Buttons, active states |
-| `primary-foreground` | #fafafa | #18181b | Text on primary |
+| `primary` | #2563eb | #3b82f6 | Buttons, active nav, accent (blue) |
+| `primary-foreground` | #ffffff | #ffffff | Text on primary |
 | `border` | #e5e5e5 | #262626 | Dividers, card borders |
-| `ring` | #18181b | #d4d4d4 | Focus rings |
+| `ring` | #2563eb | #3b82f6 | Focus rings |
 
 Additional semantic colors (to add as needed):
 - `destructive` — for cancel/delete actions
 - `success` — for confirmed RSVPs
 - `warning` — for draft/pending states
+
+## Theme Toggle
+
+Dark/light mode is controlled via a toggle button in the header (sun/moon icon). Implementation:
+- Class-based dark mode (`@custom-variant dark` in Tailwind v4)
+- State managed by `useTheme` hook (`packages/web/src/hooks/useTheme.tsx`)
+- Persisted in `localStorage` under `skate5-theme`
+- Falls back to system preference on first visit
 
 ## Typography
 
@@ -154,3 +162,6 @@ The core interaction. Must be fast and satisfying:
 | 2026-06-19 | shadcn/ui primitives | Full control, no bundle bloat, Tailwind-native |
 | 2026-06-19 | Neutral palette with semantic accents | Clean, works in dark mode, accessible |
 | 2026-06-19 | Optimistic RSVP updates | Core action must feel instant |
+| 2026-06-20 | Blue primary accent (#2563eb) | Inspired by skate4's friendly blue; adds warmth without being flashy |
+| 2026-06-20 | Card shadows + hover lift | Subtle depth and micro-interactions make UI feel alive |
+| 2026-06-20 | Class-based dark mode with toggle | User control over theme; persisted in localStorage |

@@ -17,7 +17,7 @@ export const BottomNav = () => {
               cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs",
                 isActive
-                  ? "text-foreground font-medium"
+                  ? "text-primary font-medium"
                   : "text-muted-foreground"
               )
             }

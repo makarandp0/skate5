@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
+import { ThemeProvider } from "./hooks/useTheme.js";
 import { Header } from "./components/Header.js";
 import { BottomNav } from "./components/BottomNav.js";
 import { Login } from "./routes/Login.js";
@@ -24,6 +25,7 @@ const AuthBottomNav = () => {
 
 export const App = () => {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <div className="min-h-screen bg-background text-foreground">
         <Header />
@@ -67,5 +69,6 @@ export const App = () => {
         <AuthBottomNav />
       </div>
     </AuthProvider>
+    </ThemeProvider>
   );
 };
