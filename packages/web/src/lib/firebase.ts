@@ -12,13 +12,13 @@ const appConfigSchema = z.object({
 let app: FirebaseApp;
 let auth: Auth;
 
-export async function initFirebase(): Promise<void> {
+export const initFirebase = async (): Promise<void> => {
   const res = await fetch("/api/config");
   const config = appConfigSchema.parse(await res.json());
   app = initializeApp(config);
   auth = getAuth(app);
-}
+};
 
-export function getFirebaseAuth(): Auth {
+export const getFirebaseAuth = (): Auth => {
   return auth;
-}
+};

@@ -14,10 +14,10 @@ declare module "fastify" {
   }
 }
 
-export async function authenticate(
+export const authenticate = async (
   request: FastifyRequest,
   reply: FastifyReply
-) {
+): Promise<FastifyReply | undefined> => {
   const header = request.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     return reply.status(401).send({ error: "Missing authorization header" });
@@ -62,4 +62,4 @@ export async function authenticate(
   } catch {
     return reply.status(401).send({ error: "Invalid token" });
   }
-}
+};

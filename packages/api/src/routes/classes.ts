@@ -95,7 +95,7 @@ const handlers: RouteHandlers = {
   },
 };
 
-export function classRoutes(app: FastifyInstance): void {
+export const classRoutes = (app: FastifyInstance): void => {
   app.addHook("onRequest", authenticate);
   registerRoutes(app, handlers);
-}
+};

@@ -46,11 +46,20 @@ export const config = {
   },
 };
 
-export function getConfigDiagnostics(): Array<{
+const formatDiagnosticValue = (
+  value: string | number | undefined,
+  sensitive: boolean
+): string | null => {
+  if (value === undefined || value === "") return null;
+  if (sensitive) return "Set";
+  return String(value);
+};
+
+export const getConfigDiagnostics = (): Array<{
   key: string;
   configured: boolean;
   value: string | null;
-}> {
+}> => {
   return diagnosticFields.map(({ key, sensitive }) => {
     const value = env[key];
     const configured = value !== undefined && value !== "";
@@ -61,13 +70,4 @@ export function getConfigDiagnostics(): Array<{
       value: formatDiagnosticValue(value, sensitive),
     };
   });
-}
-
-function formatDiagnosticValue(
-  value: string | number | undefined,
-  sensitive: boolean
-): string | null {
-  if (value === undefined || value === "") return null;
-  if (sensitive) return "Set";
-  return String(value);
-}
+};

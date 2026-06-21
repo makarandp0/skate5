@@ -9,7 +9,20 @@ import { Profile } from "./routes/Profile.js";
 import { Config } from "./routes/Config.js";
 import type { ReactNode } from "react";
 
-export function App() {
+const RequireAuth = ({ children }: { children: ReactNode }) => {
+  const { profile, loading } = useAuth();
+  if (loading) return null;
+  if (!profile) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+const AuthBottomNav = () => {
+  const { profile } = useAuth();
+  if (!profile) return null;
+  return <BottomNav />;
+};
+
+export const App = () => {
   return (
     <AuthProvider>
       <div className="min-h-screen bg-background text-foreground">
@@ -55,17 +68,4 @@ export function App() {
       </div>
     </AuthProvider>
   );
-}
-
-function RequireAuth({ children }: { children: ReactNode }) {
-  const { profile, loading } = useAuth();
-  if (loading) return null;
-  if (!profile) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-function AuthBottomNav() {
-  const { profile } = useAuth();
-  if (!profile) return null;
-  return <BottomNav />;
-}
+};

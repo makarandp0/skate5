@@ -17,7 +17,7 @@ interface ClientConfig {
 
 let cachedClientConfig: ClientConfig | null = null;
 
-export function initFirebaseAdmin(): void {
+export const initFirebaseAdmin = (): void => {
   if (getApps().length > 0) return;
 
   const json = Buffer.from(config.firebase.serviceAccountBase64, "base64").toString(
@@ -41,11 +41,11 @@ export function initFirebaseAdmin(): void {
     projectId: serviceAccount.project_id,
     appId: config.firebase.clientAppId,
   };
-}
+};
 
-export function getClientConfig(): ClientConfig {
+export const getClientConfig = (): ClientConfig => {
   if (!cachedClientConfig) {
     throw new Error("Firebase not initialized — call initFirebaseAdmin() first");
   }
   return cachedClientConfig;
-}
+};

@@ -10,7 +10,65 @@ import type { skateClassSchema } from "@skate5/shared";
 
 type SkateClass = z.infer<typeof skateClassSchema>;
 
-export function ClassList() {
+const StatusDot = ({ status }: { status: string }) => {
+  return (
+    <span
+      className={cn(
+        "h-2.5 w-2.5 rounded-full flex-shrink-0",
+        status === "published" && "bg-green-500",
+        status === "draft" && "bg-yellow-500",
+        status === "cancelled" && "bg-red-400"
+      )}
+      title={status}
+    />
+  );
+};
+
+const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
+  const raw = skateClass.date;
+  const date = new Date(raw.includes("T") ? raw : raw + "T00:00:00");
+  const isValidDate = !Number.isNaN(date.getTime());
+  const formatted = isValidDate
+    ? date.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+    : skateClass.date;
+
+  return (
+    <Link to={`/classes/${skateClass.id}`}>
+      <Card className="flex items-center gap-4 transition-colors hover:bg-muted/50 active:bg-muted">
+        <div className="flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-md bg-muted">
+          <span className="text-xs font-medium text-muted-foreground">
+            {isValidDate ? date.toLocaleDateString(undefined, { month: "short" }) : "—"}
+          </span>
+          <span className="text-lg font-bold leading-tight">
+            {isValidDate ? String(date.getDate()) : "—"}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-medium">{skateClass.title}</h3>
+          <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Calendar size={12} />
+              {formatted}
+            </span>
+            {skateClass.time && (
+              <span className="flex items-center gap-1">
+                <MapPin size={12} />
+                {skateClass.time}
+              </span>
+            )}
+          </div>
+        </div>
+        <StatusDot status={skateClass.status} />
+      </Card>
+    </Link>
+  );
+};
+
+export const ClassList = () => {
   const [classes, setClasses] = useState<SkateClass[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,62 +114,4 @@ export function ClassList() {
       ))}
     </div>
   );
-}
-
-function ClassCard({ skateClass }: { skateClass: SkateClass }) {
-  const raw = skateClass.date;
-  const date = new Date(raw.includes("T") ? raw : raw + "T00:00:00");
-  const isValidDate = !Number.isNaN(date.getTime());
-  const formatted = isValidDate
-    ? date.toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      })
-    : skateClass.date;
-
-  return (
-    <Link to={`/classes/${skateClass.id}`}>
-      <Card className="flex items-center gap-4 transition-colors hover:bg-muted/50 active:bg-muted">
-        <div className="flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-md bg-muted">
-          <span className="text-xs font-medium text-muted-foreground">
-            {isValidDate ? date.toLocaleDateString(undefined, { month: "short" }) : "—"}
-          </span>
-          <span className="text-lg font-bold leading-tight">
-            {isValidDate ? String(date.getDate()) : "—"}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-medium">{skateClass.title}</h3>
-          <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar size={12} />
-              {formatted}
-            </span>
-            {skateClass.time && (
-              <span className="flex items-center gap-1">
-                <MapPin size={12} />
-                {skateClass.time}
-              </span>
-            )}
-          </div>
-        </div>
-        <StatusDot status={skateClass.status} />
-      </Card>
-    </Link>
-  );
-}
-
-function StatusDot({ status }: { status: string }) {
-  return (
-    <span
-      className={cn(
-        "h-2.5 w-2.5 rounded-full flex-shrink-0",
-        status === "published" && "bg-green-500",
-        status === "draft" && "bg-yellow-500",
-        status === "cancelled" && "bg-red-400"
-      )}
-      title={status}
-    />
-  );
-}
+};

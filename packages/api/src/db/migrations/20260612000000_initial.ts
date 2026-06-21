@@ -1,7 +1,7 @@
 import { type Kysely, sql } from "kysely";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kysely migration interface requires Kysely<any>
-export async function up(db: Kysely<any>): Promise<void> {
+export const up = async (db: Kysely<any>): Promise<void> => {
   await db.schema
     .createTable("users")
     .addColumn("id", "text", (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
@@ -81,10 +81,10 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("user_id", "text", (col) => col.notNull().references("users.id"))
     .addColumn("joined_at", "timestamptz", (col) => col.notNull().defaultTo(sql`now()`))
     .execute();
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kysely migration interface requires Kysely<any>
-export async function down(db: Kysely<any>): Promise<void> {
+export const down = async (db: Kysely<any>): Promise<void> => {
   await db.schema.dropTable("chat_members").execute();
   await db.schema.dropTable("chat_messages").execute();
   await db.schema.dropTable("chats").execute();
@@ -93,4 +93,4 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable("signups").execute();
   await db.schema.dropTable("classes").execute();
   await db.schema.dropTable("users").execute();
-}
+};
