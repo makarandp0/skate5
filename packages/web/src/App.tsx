@@ -6,6 +6,8 @@ import { Header } from "./components/Header.js";
 import { BottomNav } from "./components/BottomNav.js";
 import { Login } from "./routes/Login.js";
 import { ClassList } from "./routes/ClassList.js";
+import { ClassCreate } from "./routes/ClassCreate.js";
+import { ClassDate } from "./routes/ClassDate.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
 import { Profile } from "./routes/Profile.js";
 import { Config } from "./routes/Config.js";
@@ -62,6 +64,22 @@ export const App = () => {
                 element={
                   <RequireAuth>
                     <ClassList />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/classes/new"
+                element={
+                  <RequireRole minimumRole="admin">
+                    <ClassCreate />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/classes/date/:date"
+                element={
+                  <RequireAuth>
+                    <ClassDate />
                   </RequireAuth>
                 }
               />

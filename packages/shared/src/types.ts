@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   userRoleSchema,
   rsvpStatusSchema,
+  classStatusSchema,
   userSchema,
   skateClassSchema,
   signupSchema,
@@ -21,6 +22,7 @@ import {
 
 export type UserRole = z.infer<typeof userRoleSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
+export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type User = z.infer<typeof userSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
 export type Signup = z.infer<typeof signupSchema>;

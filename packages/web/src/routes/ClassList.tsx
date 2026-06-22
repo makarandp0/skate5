@@ -1,15 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, Clock, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Sparkles,
+} from "lucide-react";
 import { api } from "../lib/api.js";
-import { CalendarDateTile } from "../components/CalendarDateTile.js";
-import { Card } from "../components/ui/Card.js";
+import { getClassDateKey } from "../components/ClassCard.js";
+import { Button } from "../components/ui/Button.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
-import type { z } from "zod";
-import type { skateClassSchema } from "@skate5/shared";
+import type { SkateClass } from "@skate5/shared";
 
-type SkateClass = z.infer<typeof skateClassSchema>;
+type CalendarDay = {
+  date: Date;
+  key: string;
+  inCurrentMonth: boolean;
+  isWeekend: boolean;
+  isPast: boolean;
+  isToday: boolean;
+};
+
+const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const toDateKey = (date: Date): string => {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getMonthLabel = (date: Date): string => {
+  return date.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const getCalendarDays = (monthDate: Date, todayKey: string): CalendarDay[] => {
+  const firstOfMonth = new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth(),
+    1
+  );
+  const start = new Date(firstOfMonth);
+  start.setDate(firstOfMonth.getDate() - firstOfMonth.getDay());
+
+  return Array.from({ length: 42 }).map((_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = toDateKey(date);
+
+    return {
+      date,
+      key,
+      inCurrentMonth: date.getMonth() === monthDate.getMonth(),
+      isWeekend: date.getDay() === 0 || date.getDay() === 6,
+      isPast: key < todayKey,
+      isToday: key === todayKey,
+    };
+  });
+};
 
 const getSortableDateTime = (value: string): number => {
   const date = new Date(value.includes("T") ? value : value + "T00:00:00");
@@ -18,165 +72,83 @@ const getSortableDateTime = (value: string): number => {
   return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
 };
 
-const getStartOfTodayTime = (): number => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return today.getTime();
-};
-
-const compareNumbers = (left: number, right: number): number => {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
-};
-
 const compareClassesByDate = (
   left: SkateClass,
-  right: SkateClass,
-  todayTime: number
+  right: SkateClass
 ): number => {
   const leftTime = getSortableDateTime(left.date);
   const rightTime = getSortableDateTime(right.date);
-  const leftIsUpcoming = leftTime >= todayTime;
-  const rightIsUpcoming = rightTime >= todayTime;
 
-  if (leftIsUpcoming !== rightIsUpcoming) {
-    return leftIsUpcoming ? -1 : 1;
+  if (leftTime === rightTime) {
+    return left.title.localeCompare(right.title);
   }
 
-  if (leftIsUpcoming) {
-    return compareNumbers(leftTime, rightTime);
+  return leftTime < rightTime ? -1 : 1;
+};
+
+const groupClassesByDate = (
+  classes: SkateClass[]
+): Map<string, SkateClass[]> => {
+  const grouped = new Map<string, SkateClass[]>();
+
+  for (const skateClass of classes) {
+    const dateKey = getClassDateKey(skateClass.date);
+    const dateClasses = grouped.get(dateKey) ?? [];
+    dateClasses.push(skateClass);
+    grouped.set(dateKey, dateClasses);
   }
 
-  return compareNumbers(rightTime, leftTime);
-};
+  for (const dateClasses of grouped.values()) {
+    dateClasses.sort(compareClassesByDate);
+  }
 
-const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase leading-none",
-        status === "published" && "bg-accent/10 text-accent",
-        status === "draft" && "bg-secondary/25 text-secondary-foreground",
-        status === "cancelled" && "bg-red-100 text-red-700"
-      )}
-    >
-      {status}
-    </span>
-  );
-};
-
-const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
-  const raw = skateClass.date;
-  const date = new Date(raw.includes("T") ? raw : raw + "T00:00:00");
-  const isValidDate = !Number.isNaN(date.getTime());
-  const formatted = isValidDate
-    ? date.toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      })
-    : skateClass.date;
-  const monthLabel = isValidDate
-    ? date.toLocaleDateString(undefined, { month: "short" })
-    : "-";
-  const dayLabel = isValidDate ? String(date.getDate()) : "-";
-  const weekdayLabel = isValidDate
-    ? date.toLocaleDateString(undefined, { weekday: "short" })
-    : "TBD";
-
-  return (
-    <Link to={`/classes/${skateClass.id}`} className="block">
-      <Card className="group flex min-h-32 items-start gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
-        <CalendarDateTile
-          month={monthLabel}
-          day={dayLabel}
-          weekday={weekdayLabel}
-          className="h-32 self-start rounded-r-none border-y-0 border-l-0"
-        />
-
-        <div className="flex min-w-0 flex-1 flex-col justify-between py-4 pr-4">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="min-w-0 text-base font-semibold leading-snug">
-              {skateClass.title}
-            </h3>
-            <StatusBadge status={skateClass.status} />
-          </div>
-
-          {skateClass.description && (
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-              {skateClass.description}
-            </p>
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar size={12} />
-              {formatted}
-            </span>
-            {skateClass.time && (
-              <span className="flex items-center gap-1">
-                <Clock size={12} />
-                {skateClass.time}
-              </span>
-            )}
-            <span className="ml-auto hidden items-center gap-1 text-primary opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
-              Open
-              <ArrowRight size={13} />
-            </span>
-          </div>
-        </div>
-      </Card>
-    </Link>
-  );
+  return grouped;
 };
 
 export const ClassList = () => {
+  const today = new Date();
+  const todayKey = toDateKey(today);
   const [classes, setClasses] = useState<SkateClass[]>([]);
+  const [monthDate, setMonthDate] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getClasses({}).then((data) => {
-      setClasses(data);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    api
+      .getClasses({})
+      .then((data) => {
+        setClasses(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, []);
+
+  const classesByDate = useMemo(() => groupClassesByDate(classes), [classes]);
+  const calendarDays = useMemo(
+    () => getCalendarDays(monthDate, todayKey),
+    [monthDate, todayKey]
+  );
+  const publishedCount = classes.filter((item) => item.status === "published")
+    .length;
+  const draftCount = classes.filter((item) => item.status === "draft").length;
+
+  const moveMonth = (offset: number): void => {
+    setMonthDate(
+      (current) => new Date(current.getFullYear(), current.getMonth() + offset, 1)
+    );
+  };
 
   if (loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-28 w-full" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full" />
-        ))}
+        <Skeleton className="h-[520px] w-full" />
       </div>
     );
   }
-
-  if (classes.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Calendar size={48} className="text-muted-foreground/50" />
-        <p className="mt-4 text-lg font-medium">No classes yet</p>
-        <p className="text-sm text-muted-foreground">
-          Check back soon for upcoming sessions
-        </p>
-      </div>
-    );
-  }
-
-  const todayTime = getStartOfTodayTime();
-  const sorted = [...classes].sort((a, b) =>
-    compareClassesByDate(a, b, todayTime)
-  );
-  const publishedCount = classes.filter((item) => item.status === "published")
-    .length;
-  const draftCount = classes.filter((item) => item.status === "draft").length;
 
   return (
     <div className="space-y-5">
@@ -188,42 +160,188 @@ export const ClassList = () => {
               Class schedule
             </div>
             <h1 className="text-2xl font-black tracking-normal sm:text-3xl">
-              Upcoming sessions
+              {getMonthLabel(monthDate)}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Find the next class, check the details, and update your RSVP.
+              Pick a date to view classes or plan a new session.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-md bg-primary/10 px-3 py-2">
-              <p className="text-lg font-bold text-primary">{classes.length}</p>
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Total
-              </p>
+
+          <div className="flex flex-col items-stretch gap-3 sm:items-end">
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Previous month"
+                onClick={() => {
+                  moveMonth(-1);
+                }}
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setMonthDate(
+                    new Date(today.getFullYear(), today.getMonth(), 1)
+                  );
+                }}
+              >
+                <CalendarDays size={16} />
+                Today
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Next month"
+                onClick={() => {
+                  moveMonth(1);
+                }}
+              >
+                <ChevronRight size={18} />
+              </Button>
             </div>
-            <div className="rounded-md bg-accent/10 px-3 py-2">
-              <p className="text-lg font-bold text-accent">{publishedCount}</p>
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Live
-              </p>
-            </div>
-            <div className="rounded-md bg-secondary/25 px-3 py-2">
-              <p className="text-lg font-bold text-secondary-foreground">
-                {draftCount}
-              </p>
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Draft
-              </p>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-md bg-primary/10 px-3 py-2">
+                <p className="text-lg font-bold text-primary">
+                  {classes.length}
+                </p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  Total
+                </p>
+              </div>
+              <div className="rounded-md bg-accent/10 px-3 py-2">
+                <p className="text-lg font-bold text-accent">
+                  {publishedCount}
+                </p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  Live
+                </p>
+              </div>
+              <div className="rounded-md bg-secondary/25 px-3 py-2">
+                <p className="text-lg font-bold text-secondary-foreground">
+                  {draftCount}
+                </p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  Draft
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {sorted.map((cls) => (
-          <ClassCard key={cls.id} skateClass={cls} />
-        ))}
-      </div>
+      <section className="overflow-hidden rounded-lg border border-border/80 bg-background/85 shadow-sm shadow-slate-900/5 backdrop-blur">
+        <div className="grid grid-cols-7 border-b border-border/80 bg-muted/40">
+          {weekdayLabels.map((label) => (
+            <div
+              key={label}
+              className={cn(
+                "px-2 py-2 text-center text-[11px] font-bold uppercase text-muted-foreground",
+                (label === "Sun" || label === "Sat") &&
+                  "bg-primary/5 text-primary"
+              )}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day) => {
+            const dateClasses = classesByDate.get(day.key) ?? [];
+            const hasClasses = dateClasses.length > 0;
+
+            return (
+              <Link
+                key={day.key}
+                to={`/classes/date/${day.key}`}
+                className={cn(
+                  "relative min-h-28 border-b border-r border-border/70 p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-32",
+                  !day.inCurrentMonth && "bg-muted/25 text-muted-foreground/60",
+                  day.isWeekend && day.inCurrentMonth && "bg-primary/[0.035]",
+                  day.isPast && "bg-muted/40 text-muted-foreground",
+                  day.isToday && "bg-primary/10 ring-2 ring-inset ring-primary",
+                  hasClasses && !day.isToday && !day.isPast && "bg-accent/5"
+                )}
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full text-xl font-black leading-none sm:h-11 sm:w-11 sm:text-2xl",
+                      day.isWeekend &&
+                        !day.isPast &&
+                        day.inCurrentMonth &&
+                        "text-primary",
+                      day.isPast && "text-muted-foreground",
+                      !day.inCurrentMonth && "text-muted-foreground/70",
+                      day.isToday && "bg-primary text-primary-foreground"
+                    )}
+                  >
+                    {day.date.getDate()}
+                  </span>
+                  {hasClasses && (
+                    <span
+                      className={cn(
+                        "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                        day.isPast
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      {dateClasses.length}
+                    </span>
+                  )}
+                </div>
+
+                {day.isToday && (
+                  <span className="mt-1 inline-flex rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                    Today
+                  </span>
+                )}
+
+                {hasClasses && (
+                  <div className="mt-2 space-y-1">
+                    {dateClasses.slice(0, 2).map((skateClass) => (
+                      <div
+                        key={skateClass.id}
+                        className={cn(
+                          "flex min-w-0 items-center gap-1 text-[11px] font-semibold",
+                          day.isPast
+                            ? "text-muted-foreground"
+                            : "text-foreground"
+                        )}
+                      >
+                        <Circle
+                          size={7}
+                          className={cn(
+                            "shrink-0 fill-current",
+                            skateClass.status === "published" && "text-accent",
+                            skateClass.status === "draft" &&
+                              "text-secondary-foreground",
+                            skateClass.status === "cancelled" && "text-red-600",
+                            day.isPast && "text-muted-foreground"
+                          )}
+                        />
+                        <span className="truncate">{skateClass.title}</span>
+                      </div>
+                    ))}
+                    {dateClasses.length > 2 && (
+                      <p className="text-[11px] font-medium text-muted-foreground">
+                        +{dateClasses.length - 2} more
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 };

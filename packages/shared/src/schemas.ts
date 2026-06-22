@@ -9,6 +9,8 @@ export const userRoleSchema = z.enum([
 
 export const rsvpStatusSchema = z.enum(["yes", "no", "maybe", "none"]);
 
+export const classStatusSchema = z.enum(["draft", "published", "cancelled"]);
+
 export const userSchema = z.object({
   id: z.string(),
   firebaseUid: z.string(),
@@ -27,7 +29,7 @@ export const skateClassSchema = z.object({
   description: z.string().nullable(),
   date: z.string(),
   time: z.string().nullable(),
-  status: z.enum(["draft", "published", "cancelled"]),
+  status: classStatusSchema,
   gridPublished: z.boolean(),
   createdBy: z.string(),
   createdAt: z.iso.datetime(),
@@ -109,8 +111,9 @@ export const firebaseClientConfigSchema = z.object({
 export const createClassSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
-  date: z.string(),
+  date: z.iso.date(),
   time: z.string().optional(),
+  status: classStatusSchema.default("draft"),
 });
 
 export const rsvpRequestSchema = z.object({
