@@ -43,6 +43,27 @@ export const signupSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
+export const classAttendancePersonSchema = z.object({
+  userId: z.string(),
+  displayName: z.string(),
+  photoUrl: z.string().nullable(),
+  rsvp: rsvpStatusSchema,
+  signupId: z.string().nullable(),
+});
+
+export const classAttendanceCountsSchema = z.object({
+  yes: z.int().nonnegative(),
+  maybe: z.int().nonnegative(),
+  no: z.int().nonnegative(),
+  none: z.int().nonnegative(),
+});
+
+export const classAttendanceResponseSchema = z.object({
+  counts: classAttendanceCountsSchema,
+  currentUserRsvp: rsvpStatusSchema,
+  people: z.array(classAttendancePersonSchema),
+});
+
 export const badgeSchema = z.object({
   id: z.string(),
   text: z.string(),
