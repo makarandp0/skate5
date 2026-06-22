@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Contract, RouteDefinition } from "./contract.js";
+import type { UserRole } from "./types.js";
 
 type InferParams<R extends RouteDefinition> = R["params"] extends z.ZodType
   ? z.infer<R["params"]>
@@ -14,7 +15,12 @@ type InferResponse<R extends RouteDefinition> = z.infer<R["response"]>;
 export interface HandlerContext<R extends RouteDefinition> {
   params: InferParams<R>;
   body: InferBody<R>;
-  user: { uid: string; email: string };
+  user: {
+    uid: string;
+    email: string;
+    role: UserRole;
+    actualRole: UserRole;
+  };
 }
 
 export type RouteHandlers = {

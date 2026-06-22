@@ -1,7 +1,9 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -16,6 +18,14 @@ import {
 } from "firebase/auth";
 import { getFirebaseAuth } from "../lib/firebase.js";
 import { api } from "../lib/api.js";
+import {
+  canAssumeRole,
+  getAssignableRoles,
+  type UserRole,
+} from "@skate5/shared";
+import {
+  setStoredEffectiveRole,
+} from "../lib/rolePreference.js";
 import type { z } from "zod";
 import type { userSchema } from "@skate5/shared";
 
@@ -25,9 +35,11 @@ type AuthState = {
   firebaseUser: FirebaseUser | null;
   profile: AppUser | null;
   loading: boolean;
+  availableRoles: UserRole[];
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
+  setEffectiveRole: (role: UserRole) => Promise<void>;
   logOut: () => Promise<void>;
 };
 
@@ -37,6 +49,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loadProfile = useCallback(async (): Promise<AppUser> => {
+    try {
+      return await api.getMe();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("400") || message.includes("403")) {
+        setStoredEffectiveRole(null);
+        return api.getMe();
+      }
+      throw err;
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (u) => {
@@ -54,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!firebaseUser) return;
     let cancelled = false;
-    api.getMe().then((me) => {
+    loadProfile().then((me) => {
       if (!cancelled) {
         setProfile(me);
         setLoading(false);
@@ -67,7 +92,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
     return () => { cancelled = true; };
-  }, [firebaseUser]);
+  }, [firebaseUser, loadProfile]);
+
+  const availableRoles = useMemo(() => {
+    if (!profile) return [];
+    return getAssignableRoles(profile.actualRole);
+  }, [profile]);
 
   const signIn = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
@@ -95,7 +125,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logOut = async (): Promise<void> => {
     await signOut(getFirebaseAuth());
+    setStoredEffectiveRole(null);
     setProfile(null);
+  };
+
+  const setEffectiveRole = async (role: UserRole): Promise<void> => {
+    if (!profile || !canAssumeRole(profile.actualRole, role)) {
+      throw new Error("Role is not available to this user");
+    }
+
+    setStoredEffectiveRole(role === profile.actualRole ? null : role);
+    setLoading(true);
+
+    try {
+      setProfile(await loadProfile());
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -104,9 +150,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firebaseUser,
         profile,
         loading,
+        availableRoles,
         signIn,
         signInWithEmail,
         signUpWithEmail,
+        setEffectiveRole,
         logOut,
       }}
     >

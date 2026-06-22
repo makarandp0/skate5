@@ -1,4 +1,5 @@
 import { Navigate } from "react-router-dom";
+import { getRoleLabel } from "@skate5/shared";
 import { LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { Avatar } from "../components/ui/Avatar.js";
@@ -51,7 +52,12 @@ export const Profile = () => {
             <p className="text-xs font-semibold uppercase text-muted-foreground">
               Access
             </p>
-            <p className="text-sm">Signed in member</p>
+            <p className="text-sm">{getRoleLabel(profile.role)}</p>
+            {profile.actualRole !== profile.role && (
+              <p className="text-xs text-muted-foreground">
+                Account role: {getRoleLabel(profile.actualRole)}
+              </p>
+            )}
           </div>
         </div>
       </Card>

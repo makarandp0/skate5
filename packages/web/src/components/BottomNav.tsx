@@ -1,10 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "../lib/utils.js";
-import { appNavItems } from "../lib/navigation.js";
-
-const links = appNavItems.filter((item) => item.showInBottomNav);
+import { getVisibleNavItems } from "../lib/navigation.js";
+import { useAuth } from "../hooks/useAuth.js";
 
 export const BottomNav = () => {
+  const { profile } = useAuth();
+  const links = getVisibleNavItems(profile?.role ?? null).filter(
+    (item) => item.showInBottomNav
+  );
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-background/90 backdrop-blur-xl sm:hidden">
       <div className="flex h-16 px-2 py-1.5">

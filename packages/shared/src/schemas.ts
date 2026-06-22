@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const userRoleSchema = z.enum(["admin", "instructor", "member"]);
+export const userRoleSchema = z.enum([
+  "developer",
+  "admin",
+  "instructor",
+  "member",
+]);
 
 export const rsvpStatusSchema = z.enum(["yes", "no", "maybe", "none"]);
 
@@ -11,6 +16,7 @@ export const userSchema = z.object({
   displayName: z.string(),
   photoUrl: z.string().nullable(),
   role: userRoleSchema,
+  actualRole: userRoleSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

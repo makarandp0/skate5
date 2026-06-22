@@ -3,9 +3,11 @@ import { fileURLToPath } from "url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import { canAssumeRole } from "@skate5/shared";
 import { config, getConfigDiagnostics } from "./config.js";
 import { initFirebaseAdmin, getClientConfig } from "./lib/firebase-admin.js";
 import { classRoutes } from "./routes/classes.js";
+import { authenticate } from "./middleware/auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,7 +21,11 @@ app.get("/api/config", () => {
   return getClientConfig();
 });
 
-app.get("/api/dev/status", () => {
+app.get("/api/dev/status", { preHandler: authenticate }, (request, reply) => {
+  if (!request.user || !canAssumeRole(request.user.role, "developer")) {
+    return reply.status(403).send({ error: "Forbidden" });
+  }
+
   return {
     status: "ok",
     checkedAt: new Date().toISOString(),

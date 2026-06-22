@@ -4,6 +4,8 @@
 
 import { z } from "zod";
 import { contract, Contract, RouteDefinition } from "./contract.js";
+import { userRoleSchema } from "./schemas.js";
+import type { UserRole } from "./types.js";
 
 type InferParams<R extends RouteDefinition> = R["params"] extends z.ZodType
   ? z.infer<R["params"]>
@@ -41,6 +43,7 @@ const buildPath = (
 export const createApiClient = (options: {
   baseUrl: string;
   getToken: () => Promise<string>;
+  getEffectiveRole?: () => UserRole | null;
 }): ApiClient => {
   const client = {} as Record<string, (args: unknown) => Promise<unknown>>;
 
@@ -55,6 +58,12 @@ export const createApiClient = (options: {
       if (route.auth !== "none") {
         const token = await options.getToken();
         headers.Authorization = `Bearer ${token}`;
+
+        const effectiveRole = options.getEffectiveRole?.();
+        if (effectiveRole) {
+          headers["X-Skate5-Effective-Role"] =
+            userRoleSchema.parse(effectiveRole);
+        }
       }
 
       const res = await fetch(`${options.baseUrl}${path}`, {

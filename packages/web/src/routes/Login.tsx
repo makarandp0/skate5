@@ -1,24 +1,60 @@
 import { useState, type SyntheticEvent } from "react";
 import { Navigate } from "react-router-dom";
+import { FirebaseError } from "firebase/app";
 import { useAuth } from "../hooks/useAuth.js";
 import { Button } from "../components/ui/Button.js";
 import brandBanner from "../assets/skate-journeys-banner.png";
 
+const getAuthErrorCode = (err: unknown): string | null => {
+  if (err instanceof FirebaseError) return err.code;
+
+  if (!(err instanceof Error)) return null;
+
+  const match = /\((auth\/[^)]+)\)/.exec(err.message);
+  return match ? match[1] : null;
+};
+
 const getAuthErrorMessage = (err: unknown): string => {
-  if (err instanceof Error) {
-    if (err.message.includes("auth/email-already-in-use")) {
-      return "That email already has an account. Try signing in instead.";
-    }
-    if (err.message.includes("auth/invalid-credential")) {
-      return "The email or password is incorrect.";
-    }
-    if (err.message.includes("auth/operation-not-allowed")) {
-      return "Email/password sign-in is not enabled for this Firebase project.";
-    }
-    if (err.message.includes("auth/weak-password")) {
-      return "Use a password with at least 6 characters.";
-    }
+  const code = getAuthErrorCode(err);
+
+  if (code === "auth/email-already-in-use") {
+    return "That email already has an account. Try signing in instead.";
   }
+  if (
+    code === "auth/invalid-credential" ||
+    code === "auth/invalid-login-credentials" ||
+    code === "auth/user-not-found" ||
+    code === "auth/wrong-password"
+  ) {
+    return "No account matched those credentials. Create an account or check the email and password.";
+  }
+  if (code === "auth/operation-not-allowed") {
+    return "Email/password sign-in is not enabled for this Firebase project.";
+  }
+  if (code === "auth/admin-restricted-operation") {
+    return "This Firebase project is not allowing this sign-in method.";
+  }
+  if (code === "auth/weak-password") {
+    return "Use a password with at least 6 characters.";
+  }
+  if (code === "auth/invalid-email") {
+    return "Enter a valid email address.";
+  }
+  if (code === "auth/missing-password") {
+    return "Enter a password.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Could not reach Firebase Auth. Check your connection and try again.";
+  }
+  if (code === "auth/too-many-requests") {
+    return "Too many attempts. Wait a bit and try again.";
+  }
+  if (code === "auth/unauthorized-domain") {
+    return "This local domain is not authorized in Firebase Auth settings.";
+  }
+
+  if (import.meta.env.DEV && code) return `Firebase Auth error: ${code}`;
+
   return "Something went wrong. Please try again.";
 };
 

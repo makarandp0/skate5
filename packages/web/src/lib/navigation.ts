@@ -1,4 +1,5 @@
 import { Calendar, Settings, User, type LucideIcon } from "lucide-react";
+import { canAssumeRole, type UserRole } from "@skate5/shared";
 
 export type AppNavItem = {
   to: string;
@@ -6,6 +7,7 @@ export type AppNavItem = {
   label: string;
   showInTopNav: boolean;
   showInBottomNav: boolean;
+  minimumRole?: UserRole;
 };
 
 export const appNavItems: AppNavItem[] = [
@@ -29,5 +31,17 @@ export const appNavItems: AppNavItem[] = [
     label: "Config",
     showInTopNav: false,
     showInBottomNav: false,
+    minimumRole: "developer",
   },
 ];
+
+export const getVisibleNavItems = (
+  effectiveRole: UserRole | null
+): AppNavItem[] => {
+  if (!effectiveRole) return appNavItems.filter((item) => item.to === "/");
+
+  return appNavItems.filter((item) => {
+    if (!item.minimumRole) return true;
+    return canAssumeRole(effectiveRole, item.minimumRole);
+  });
+};

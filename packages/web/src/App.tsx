@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { canAssumeRole, type UserRole } from "@skate5/shared";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { ThemeProvider } from "./hooks/useTheme.js";
 import { Header } from "./components/Header.js";
@@ -14,6 +15,22 @@ const RequireAuth = ({ children }: { children: ReactNode }) => {
   const { profile, loading } = useAuth();
   if (loading) return null;
   if (!profile) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+const RequireRole = ({
+  minimumRole,
+  children,
+}: {
+  minimumRole: UserRole;
+  children: ReactNode;
+}) => {
+  const { profile, loading } = useAuth();
+  if (loading) return null;
+  if (!profile) return <Navigate to="/login" replace />;
+  if (!canAssumeRole(profile.role, minimumRole)) {
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 };
 
@@ -67,9 +84,9 @@ export const App = () => {
               <Route
                 path="/config"
                 element={
-                  <RequireAuth>
+                  <RequireRole minimumRole="developer">
                     <Config />
-                  </RequireAuth>
+                  </RequireRole>
                 }
               />
             </Routes>

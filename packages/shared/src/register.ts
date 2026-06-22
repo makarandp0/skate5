@@ -5,11 +5,17 @@
 
 import { contract, RouteDefinition } from "./contract.js";
 import { RouteHandlers } from "./handler.js";
+import type { UserRole } from "./types.js";
 
 interface FastifyRequest {
   body: unknown;
   params: unknown;
-  user?: { uid: string; email: string };
+  user?: {
+    uid: string;
+    email: string;
+    role: UserRole;
+    actualRole: UserRole;
+  };
 }
 
 interface FastifyReply {
