@@ -1,4 +1,5 @@
-FROM node:20-slim AS base
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-slim AS base
 RUN corepack enable && corepack prepare pnpm@10.34.3 --activate
 WORKDIR /app
 
@@ -21,7 +22,7 @@ RUN pnpm --filter @skate5/shared run build && \
     pnpm --filter @skate5/web run build
 
 # --- runner: minimal production image ---
-FROM node:20-slim AS runner
+FROM node:${NODE_VERSION}-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.34.3 --activate
 WORKDIR /app
