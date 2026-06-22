@@ -1,4 +1,11 @@
-import type { User, SkateClass, Signup, Badge } from "@skate5/shared";
+import {
+  userRoleSchema,
+  type User,
+  type UserRole,
+  type SkateClass,
+  type Signup,
+  type Badge,
+} from "@skate5/shared";
 
 interface UserRow {
   id: string;
@@ -12,18 +19,20 @@ interface UserRow {
 }
 
 const assertUserRole = (s: string): User["role"] => {
-  if (s === "admin" || s === "instructor" || s === "member") return s;
-  throw new Error(`Invalid user role: ${s}`);
+  return userRoleSchema.parse(s);
 };
 
-export const toUser = (row: UserRow): User => {
+export const toUser = (row: UserRow, effectiveRole?: UserRole): User => {
+  const actualRole = assertUserRole(row.role);
+
   return {
     id: row.id,
     firebaseUid: row.firebase_uid,
     email: row.email,
     displayName: row.display_name,
     photoUrl: row.photo_url,
-    role: assertUserRole(row.role),
+    role: effectiveRole ?? actualRole,
+    actualRole,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

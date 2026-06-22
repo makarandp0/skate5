@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
+import { getApiAuthHeaders } from "../lib/api.js";
 import { createQrMatrix } from "../lib/qr.js";
 import { cn } from "../lib/utils.js";
 import { Button } from "../components/ui/Button.js";
@@ -248,9 +249,10 @@ export const Config = () => {
 
     const loadStatus = async (): Promise<void> => {
       try {
+        const statusHeaders = await getApiAuthHeaders();
         const [configRes, statusRes] = await Promise.all([
           fetch("/api/config"),
-          fetch("/api/dev/status"),
+          fetch("/api/dev/status", { headers: statusHeaders }),
         ]);
 
         if (cancelled) return;

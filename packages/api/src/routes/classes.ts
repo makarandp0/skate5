@@ -11,7 +11,7 @@ const handlers: RouteHandlers = {
       .selectAll()
       .where("id", "=", user.uid)
       .executeTakeFirstOrThrow();
-    return toUser(row);
+    return toUser(row, user.role);
   },
 
   getClasses: async () => {
