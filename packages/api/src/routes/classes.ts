@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   registerRoutes,
   rsvpStatusSchema,
+  canAssumeRole,
   type RsvpStatus,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
@@ -19,6 +20,15 @@ import {
 import { authenticate } from "../middleware/auth.js";
 
 const countSchema = z.coerce.number().int().nonnegative();
+
+class HttpError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
 
 const getUserCount = async (): Promise<number> => {
   const row = await db
@@ -168,6 +178,10 @@ const handlers: RouteHandlers = {
   },
 
   createClass: async ({ body, user }) => {
+    if (!canAssumeRole(user.role, "admin")) {
+      throw new HttpError(403, "Only admins can create classes");
+    }
+
     const row = await db
       .insertInto("classes")
       .values({
@@ -175,7 +189,7 @@ const handlers: RouteHandlers = {
         description: body.description ?? null,
         date: body.date,
         time: body.time ?? null,
-        status: "draft",
+        status: body.status,
         created_by: user.uid,
       })
       .returningAll()
