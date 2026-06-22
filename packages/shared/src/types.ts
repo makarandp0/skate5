@@ -5,6 +5,8 @@ import {
   userSchema,
   skateClassSchema,
   signupSchema,
+  classAttendancePersonSchema,
+  classAttendanceResponseSchema,
   badgeSchema,
   gridEntrySchema,
   chatSchema,
@@ -22,6 +24,12 @@ export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type User = z.infer<typeof userSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
 export type Signup = z.infer<typeof signupSchema>;
+export type ClassAttendancePerson = z.infer<
+  typeof classAttendancePersonSchema
+>;
+export type ClassAttendanceResponse = z.infer<
+  typeof classAttendanceResponseSchema
+>;
 export type Badge = z.infer<typeof badgeSchema>;
 export type GridEntry = z.infer<typeof gridEntrySchema>;
 export type Chat = z.infer<typeof chatSchema>;

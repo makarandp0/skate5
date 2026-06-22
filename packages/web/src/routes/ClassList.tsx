@@ -18,6 +18,42 @@ const getSortableDateTime = (value: string): number => {
   return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
 };
 
+const getStartOfTodayTime = (): number => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return today.getTime();
+};
+
+const compareNumbers = (left: number, right: number): number => {
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
+};
+
+const compareClassesByDate = (
+  left: SkateClass,
+  right: SkateClass,
+  todayTime: number
+): number => {
+  const leftTime = getSortableDateTime(left.date);
+  const rightTime = getSortableDateTime(right.date);
+  const leftIsUpcoming = leftTime >= todayTime;
+  const rightIsUpcoming = rightTime >= todayTime;
+
+  if (leftIsUpcoming !== rightIsUpcoming) {
+    return leftIsUpcoming ? -1 : 1;
+  }
+
+  if (leftIsUpcoming) {
+    return compareNumbers(leftTime, rightTime);
+  }
+
+  return compareNumbers(rightTime, leftTime);
+};
+
 const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
   return (
     <span
@@ -54,12 +90,12 @@ const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
 
   return (
     <Link to={`/classes/${skateClass.id}`} className="block">
-      <Card className="group flex min-h-32 items-stretch gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
+      <Card className="group flex min-h-32 items-start gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
         <CalendarDateTile
           month={monthLabel}
           day={dayLabel}
           weekday={weekdayLabel}
-          className="self-stretch rounded-r-none border-y-0 border-l-0"
+          className="h-32 self-start rounded-r-none border-y-0 border-l-0"
         />
 
         <div className="flex min-w-0 flex-1 flex-col justify-between py-4 pr-4">
@@ -134,8 +170,9 @@ export const ClassList = () => {
     );
   }
 
-  const sorted = [...classes].sort(
-    (a, b) => getSortableDateTime(b.date) - getSortableDateTime(a.date)
+  const todayTime = getStartOfTodayTime();
+  const sorted = [...classes].sort((a, b) =>
+    compareClassesByDate(a, b, todayTime)
   );
   const publishedCount = classes.filter((item) => item.status === "published")
     .length;

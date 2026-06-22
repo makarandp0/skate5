@@ -3,6 +3,8 @@ import {
   userSchema,
   skateClassSchema,
   signupSchema,
+  rsvpStatusSchema,
+  classAttendanceResponseSchema,
   badgeSchema,
   createClassSchema,
   rsvpRequestSchema,
@@ -53,6 +55,12 @@ export const contract = {
     path: "/classes/:id/signups",
     params: z.object({ id: z.string() }),
     response: z.array(signupSchema),
+  },
+  getClassAttendance: {
+    method: "GET",
+    path: "/classes/:id/attendance/:rsvp",
+    params: z.object({ id: z.string(), rsvp: rsvpStatusSchema }),
+    response: classAttendanceResponseSchema,
   },
   rsvp: {
     method: "POST",

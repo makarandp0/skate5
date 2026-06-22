@@ -1,9 +1,11 @@
 import {
+  classAttendancePersonSchema,
   userRoleSchema,
   type User,
   type UserRole,
   type SkateClass,
   type Signup,
+  type ClassAttendancePerson,
   type Badge,
 } from "@skate5/shared";
 
@@ -60,6 +62,14 @@ interface SignupRow {
   updated_at: Date;
 }
 
+interface ClassAttendancePersonRow {
+  user_id: string;
+  display_name: string;
+  photo_url: string | null;
+  rsvp: string | null;
+  signup_id: string | null;
+}
+
 interface BadgeRow {
   id: string;
   text: string;
@@ -101,6 +111,18 @@ export const toSignup = (row: SignupRow): Signup => {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
+};
+
+export const toClassAttendancePerson = (
+  row: ClassAttendancePersonRow
+): ClassAttendancePerson => {
+  return classAttendancePersonSchema.parse({
+    userId: row.user_id,
+    displayName: row.display_name,
+    photoUrl: row.photo_url,
+    rsvp: row.rsvp ?? "none",
+    signupId: row.signup_id,
+  });
 };
 
 export const toBadge = (row: BadgeRow): Badge => {
