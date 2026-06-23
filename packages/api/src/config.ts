@@ -1,27 +1,100 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const emptyStringToUndefined = (value: unknown): unknown =>
+  value === "" ? undefined : value;
+
+const requiredNonEmptyStringSchema = z.preprocess(
+  emptyStringToUndefined,
+  z.string().min(1)
+);
+
 const optionalNonEmptyStringSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
+  emptyStringToUndefined,
   z.string().min(1).optional()
 );
 
+const portSchema = z.preprocess(
+  emptyStringToUndefined,
+  z.coerce.number().int().positive().default(3000)
+);
+
+const nodeEnvSchema = z.preprocess(
+  emptyStringToUndefined,
+  z.enum(["development", "test", "production"]).default("development")
+);
+
+const databaseUrlSchema = requiredNonEmptyStringSchema.superRefine((value, ctx) => {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Expected a postgres:// or postgresql:// URL",
+      });
+    }
+  } catch {
+    ctx.addIssue({
+      code: "custom",
+      message: "Expected a valid postgres:// or postgresql:// URL",
+    });
+  }
+});
+
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(3000),
-  STATIC_PATH: z.string().min(1).optional(),
-  DATABASE_URL: z.string().min(1),
-  FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().min(1),
-  FIREBASE_CLIENT_API_KEY: z.string().min(1),
-  FIREBASE_CLIENT_APP_ID: z.string().min(1),
-  FIREBASE_AUTH_DOMAIN: z.string().min(1).optional(),
+  NODE_ENV: nodeEnvSchema,
+  PORT: portSchema,
+  STATIC_PATH: optionalNonEmptyStringSchema,
+  DATABASE_URL: databaseUrlSchema,
+  FIREBASE_SERVICE_ACCOUNT_BASE64: requiredNonEmptyStringSchema,
+  FIREBASE_CLIENT_API_KEY: requiredNonEmptyStringSchema,
+  FIREBASE_CLIENT_APP_ID: requiredNonEmptyStringSchema,
+  FIREBASE_AUTH_DOMAIN: optionalNonEmptyStringSchema,
   RAILWAY_GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   COMMIT_SHA: optionalNonEmptyStringSchema,
   SOURCE_VERSION: optionalNonEmptyStringSchema,
 });
 
-const env = envSchema.parse(process.env);
+export class StartupConfigurationError extends Error {
+  readonly issues: ReadonlyArray<string>;
+
+  constructor(error: z.ZodError) {
+    const issues = error.issues.map((issue) => {
+      const key = issue.path.join(".") || "environment";
+      return `${key}: ${issue.message}`;
+    });
+
+    super(`Invalid startup configuration: ${issues.join("; ")}`);
+    this.name = "StartupConfigurationError";
+    this.issues = issues;
+  }
+}
+
+const parseEnv = (source: unknown): z.infer<typeof envSchema> => {
+  const result = envSchema.safeParse(source);
+
+  if (result.success) {
+    return result.data;
+  }
+
+  const error = new StartupConfigurationError(result.error);
+
+  console.error("FATAL startup: invalid environment configuration.");
+  console.error(
+    "Required Railway variables: DATABASE_URL, FIREBASE_SERVICE_ACCOUNT_BASE64, FIREBASE_CLIENT_API_KEY, FIREBASE_CLIENT_APP_ID."
+  );
+  console.error(
+    "Optional variables may be omitted; empty FIREBASE_AUTH_DOMAIN and STATIC_PATH are treated as unset."
+  );
+  error.issues.forEach((issue) => {
+    console.error(` - ${issue}`);
+  });
+
+  throw error;
+};
+
+const env = parseEnv(process.env);
 
 type EnvKey = keyof typeof env;
 
