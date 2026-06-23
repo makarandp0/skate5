@@ -116,6 +116,13 @@ export const createClassSchema = z.object({
   status: classStatusSchema.default("draft"),
 });
 
+export const updateClassSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  time: z.string().optional(),
+  status: classStatusSchema.default("draft"),
+});
+
 export const rsvpRequestSchema = z.object({
   rsvp: rsvpStatusSchema,
 });

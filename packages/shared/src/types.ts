@@ -14,6 +14,7 @@ import {
   chatMessageSchema,
   firebaseClientConfigSchema,
   createClassSchema,
+  updateClassSchema,
   rsvpRequestSchema,
   createBadgeSchema,
   createGridEntrySchema,
@@ -39,6 +40,7 @@ export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type FirebaseClientConfig = z.infer<typeof firebaseClientConfigSchema>;
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;
+export type UpdateClassInput = z.infer<typeof updateClassSchema>;
 export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
 export type CreateBadgeInput = z.infer<typeof createBadgeSchema>;
 export type CreateGridEntryInput = z.infer<typeof createGridEntrySchema>;

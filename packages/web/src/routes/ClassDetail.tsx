@@ -59,7 +59,11 @@ export const ClassDetail = () => {
         Back
       </Link>
 
-      <ClassFullView skateClass={skateClass} headingLevel="h1" />
+      <ClassFullView
+        skateClass={skateClass}
+        headingLevel="h1"
+        onClassUpdated={setSkateClass}
+      />
     </div>
   );
 };

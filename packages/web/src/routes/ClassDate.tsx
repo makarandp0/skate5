@@ -71,6 +71,14 @@ export const ClassDate = () => {
       });
   }, [dateKey]);
 
+  const handleClassUpdated = (updatedClass: SkateClass): void => {
+    setClasses((currentClasses) =>
+      currentClasses.map((skateClass) =>
+        skateClass.id === updatedClass.id ? updatedClass : skateClass
+      )
+    );
+  };
+
   return (
     <div className="space-y-5">
       <Link
@@ -127,6 +135,7 @@ export const ClassDate = () => {
               key={skateClass.id}
               skateClass={skateClass}
               showDateTile={false}
+              onClassUpdated={handleClassUpdated}
             />
           ))}
         </div>

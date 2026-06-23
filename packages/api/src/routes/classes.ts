@@ -197,6 +197,31 @@ const handlers: RouteHandlers = {
     return toSkateClass(row);
   },
 
+  updateClass: async ({ params, body, user }) => {
+    if (!canAssumeRole(user.role, "admin")) {
+      throw new HttpError(403, "Only admins can update classes");
+    }
+
+    const row = await db
+      .updateTable("classes")
+      .set({
+        title: body.title,
+        description: body.description ?? null,
+        time: body.time ?? null,
+        status: body.status,
+        updated_at: new Date(),
+      })
+      .where("id", "=", params.id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new HttpError(404, "Class not found");
+    }
+
+    return toSkateClass(row);
+  },
+
   getClassSignups: async ({ params }) => {
     const rows = await db
       .selectFrom("signups")
