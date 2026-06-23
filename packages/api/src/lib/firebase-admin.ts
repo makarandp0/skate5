@@ -11,13 +11,33 @@ const serviceAccountSchema = z.object({
 
 let cachedClientConfig: FirebaseClientConfig | null = null;
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return "Unknown error";
+};
+
+const parseServiceAccount = (): z.infer<typeof serviceAccountSchema> => {
+  try {
+    const json = Buffer.from(config.firebase.serviceAccountBase64, "base64").toString(
+      "utf-8"
+    );
+    const parsed: unknown = JSON.parse(json);
+    return serviceAccountSchema.parse(parsed);
+  } catch (error) {
+    throw new Error(
+      [
+        "Invalid FIREBASE_SERVICE_ACCOUNT_BASE64.",
+        "Expected a base64-encoded Firebase service account JSON object with project_id, private_key, and client_email.",
+        `Cause: ${getErrorMessage(error)}`,
+      ].join(" ")
+    );
+  }
+};
+
 export const initFirebaseAdmin = (): void => {
   if (getApps().length > 0) return;
 
-  const json = Buffer.from(config.firebase.serviceAccountBase64, "base64").toString(
-    "utf-8"
-  );
-  const serviceAccount = serviceAccountSchema.parse(JSON.parse(json));
+  const serviceAccount = parseServiceAccount();
 
   initializeApp({
     credential: cert({
