@@ -1,17 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type SyntheticEvent } from "react";
 import {
   CheckCircle2,
   CircleHelp,
   Clock,
+  LoaderCircle,
+  Pencil,
+  Save,
   UsersRound,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
+import {
+  canAssumeRole,
+  classStatusSchema,
+  updateClassSchema,
+} from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { CalendarDateTile } from "./CalendarDateTile.js";
 import { getClassDateKey, StatusBadge } from "./ClassCard.js";
 import { Avatar } from "./ui/Avatar.js";
+import { Button } from "./ui/Button.js";
 import { Card } from "./ui/Card.js";
 import { Skeleton } from "./ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
@@ -20,6 +29,7 @@ import type {
   ClassAttendanceResponse,
   RsvpStatus,
   SkateClass,
+  ClassStatus,
 } from "@skate5/shared";
 
 const emptyAttendance: ClassAttendanceResponse = {
@@ -65,6 +75,12 @@ const attendanceTabs: Array<{
   },
 ];
 
+const statusOptions: Array<{ status: ClassStatus; label: string }> = [
+  { status: "draft", label: "Draft" },
+  { status: "published", label: "Published" },
+  { status: "cancelled", label: "Cancelled" },
+];
+
 const RsvpButton = ({
   label,
   icon: Icon,
@@ -105,14 +121,27 @@ type ClassFullViewProps = {
   skateClass: SkateClass;
   headingLevel?: "h1" | "h2";
   showDateTile?: boolean;
+  onClassUpdated?: (skateClass: SkateClass) => void;
 };
 
 export const ClassFullView = ({
   skateClass,
   headingLevel = "h2",
   showDateTile = true,
+  onClassUpdated,
 }: ClassFullViewProps) => {
   const { profile } = useAuth();
+  const rawDate = getClassDateKey(skateClass.date);
+  const canEdit = profile ? canAssumeRole(profile.role, "admin") : false;
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(skateClass.title);
+  const [editTime, setEditTime] = useState(skateClass.time ?? "");
+  const [editDescription, setEditDescription] = useState(
+    skateClass.description ?? ""
+  );
+  const [editStatus, setEditStatus] = useState<ClassStatus>(skateClass.status);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [attendancePeople, setAttendancePeople] = useState<
     ClassAttendancePerson[]
   >([]);
@@ -124,6 +153,22 @@ export const ClassFullView = ({
     useState<RsvpStatus>("yes");
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
+
+  useEffect(() => {
+    setEditing(false);
+    setEditTitle(skateClass.title);
+    setEditTime(skateClass.time ?? "");
+    setEditDescription(skateClass.description ?? "");
+    setEditStatus(skateClass.status);
+    setEditError(null);
+  }, [
+    rawDate,
+    skateClass.description,
+    skateClass.id,
+    skateClass.status,
+    skateClass.time,
+    skateClass.title,
+  ]);
 
   useEffect(() => {
     setSelectedAttendanceRsvp("yes");
@@ -173,7 +218,44 @@ export const ClassFullView = ({
     }
   };
 
-  const rawDate = getClassDateKey(skateClass.date);
+  const resetEditForm = (): void => {
+    setEditTitle(skateClass.title);
+    setEditTime(skateClass.time ?? "");
+    setEditDescription(skateClass.description ?? "");
+    setEditStatus(skateClass.status);
+    setEditError(null);
+  };
+
+  const handleUpdate = async (): Promise<void> => {
+    setSaving(true);
+    setEditError(null);
+
+    try {
+      const body = updateClassSchema.parse({
+        title: editTitle.trim(),
+        time: editTime.trim() || undefined,
+        description: editDescription.trim() || undefined,
+        status: classStatusSchema.parse(editStatus),
+      });
+      const updated = await api.updateClass({
+        params: { id: skateClass.id },
+        body,
+      });
+      onClassUpdated?.(updated);
+      setEditing(false);
+    } catch (err) {
+      console.error("updateClass failed:", err);
+      setEditError("Could not update class. Check the details and try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSubmit = (event: SyntheticEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    void handleUpdate();
+  };
+
   const date = new Date(rawDate + "T00:00:00");
   const isValidDate = !Number.isNaN(date.getTime());
   const monthLabel = isValidDate
@@ -196,40 +278,168 @@ export const ClassFullView = ({
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-border/80 bg-background/80 p-4 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          {showDateTile && (
-            <CalendarDateTile
-              month={monthLabel}
-              day={dayLabel}
-              weekday={weekdayLabel}
-              size="large"
-            />
-          )}
+        {editing ? (
+          <form className="space-y-4" onSubmit={handleEditSubmit}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              {showDateTile && (
+                <CalendarDateTile
+                  month={monthLabel}
+                  day={dayLabel}
+                  weekday={weekdayLabel}
+                  size="large"
+                />
+              )}
 
-          <div className="min-w-0 flex-1">
-            <div className="mb-2">
-              <StatusBadge status={skateClass.status} />
-            </div>
-            {headingLevel === "h1" ? (
-              <h1 className={headingClassName}>{skateClass.title}</h1>
-            ) : (
-              <h2 className={headingClassName}>{skateClass.title}</h2>
-            )}
-            {skateClass.time && (
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} />
-                  {skateClass.time}
-                </span>
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {statusOptions.map((option) => {
+                    const active = editStatus === option.status;
+
+                    return (
+                      <button
+                        key={option.status}
+                        type="button"
+                        onClick={() => {
+                          setEditStatus(option.status);
+                        }}
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-semibold uppercase transition-colors",
+                          active
+                            ? "bg-accent text-accent-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <label className="sr-only" htmlFor={`class-title-${skateClass.id}`}>
+                  Title
+                </label>
+                <input
+                  id={`class-title-${skateClass.id}`}
+                  value={editTitle}
+                  onChange={(event) => {
+                    setEditTitle(event.target.value);
+                  }}
+                  required
+                  maxLength={120}
+                  placeholder="Class title"
+                  className="w-full rounded-md border border-border bg-background/80 px-3 py-2 text-2xl font-black leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-3xl"
+                />
+
+                <div className="mt-3 max-w-44">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+                    Time
+                    <input
+                      type="time"
+                      value={editTime}
+                      onChange={(event) => {
+                        setEditTime(event.target.value);
+                      }}
+                      className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </label>
+                </div>
+
+                <label
+                  className="sr-only"
+                  htmlFor={`class-description-${skateClass.id}`}
+                >
+                  Description
+                </label>
+                <textarea
+                  id={`class-description-${skateClass.id}`}
+                  value={editDescription}
+                  onChange={(event) => {
+                    setEditDescription(event.target.value);
+                  }}
+                  rows={5}
+                  placeholder="Add the class description, notes, or focus for the session."
+                  className="mt-4 min-h-32 w-full resize-y rounded-md border border-border bg-background/80 px-3 py-2 text-sm leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                />
+
+                {editError && (
+                  <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {editError}
+                  </p>
+                )}
+
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      resetEditForm();
+                      setEditing(false);
+                    }}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? (
+                      <LoaderCircle size={16} className="animate-spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    Save changes
+                  </Button>
+                </div>
               </div>
+            </div>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            {showDateTile && (
+              <CalendarDateTile
+                month={monthLabel}
+                day={dayLabel}
+                weekday={weekdayLabel}
+                size="large"
+              />
             )}
-            {skateClass.description && (
-              <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-foreground/80">
-                {skateClass.description}
-              </p>
-            )}
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <StatusBadge status={skateClass.status} />
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditing(true);
+                    }}
+                  >
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              {headingLevel === "h1" ? (
+                <h1 className={headingClassName}>{skateClass.title}</h1>
+              ) : (
+                <h2 className={headingClassName}>{skateClass.title}</h2>
+              )}
+              {skateClass.time && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={14} />
+                    {skateClass.time}
+                  </span>
+                </div>
+              )}
+              {skateClass.description && (
+                <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+                  {skateClass.description}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {profile && skateClass.status === "published" && (

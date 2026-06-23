@@ -7,6 +7,7 @@ import {
   classAttendanceResponseSchema,
   badgeSchema,
   createClassSchema,
+  updateClassSchema,
   rsvpRequestSchema,
   createBadgeSchema,
   firebaseClientConfigSchema,
@@ -48,6 +49,13 @@ export const contract = {
     method: "POST",
     path: "/classes",
     body: createClassSchema,
+    response: skateClassSchema,
+  },
+  updateClass: {
+    method: "PUT",
+    path: "/classes/:id",
+    params: z.object({ id: z.string() }),
+    body: updateClassSchema,
     response: skateClassSchema,
   },
   getClassSignups: {

@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Circle,
-  Sparkles,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { api } from "../lib/api.js";
 import { getClassDateKey } from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
@@ -131,9 +125,6 @@ export const ClassList = () => {
     () => getCalendarDays(monthDate, todayKey),
     [monthDate, todayKey]
   );
-  const publishedCount = classes.filter((item) => item.status === "published")
-    .length;
-  const draftCount = classes.filter((item) => item.status === "draft").length;
 
   const moveMonth = (offset: number): void => {
     setMonthDate(
@@ -153,12 +144,20 @@ export const ClassList = () => {
   return (
     <div className="space-y-5">
       <section className="rounded-lg border border-border/80 bg-background/80 p-4 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-5">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-secondary/25 px-3 py-1 text-xs font-semibold text-secondary-foreground">
-              <Sparkles size={13} />
-              Class schedule
-            </div>
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Previous month"
+            onClick={() => {
+              moveMonth(-1);
+            }}
+          >
+            <ChevronLeft size={18} />
+          </Button>
+
+          <div className="min-w-0 text-center">
             <h1 className="text-2xl font-black tracking-normal sm:text-3xl">
               {getMonthLabel(monthDate)}
             </h1>
@@ -167,71 +166,17 @@ export const ClassList = () => {
             </p>
           </div>
 
-          <div className="flex flex-col items-stretch gap-3 sm:items-end">
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Previous month"
-                onClick={() => {
-                  moveMonth(-1);
-                }}
-              >
-                <ChevronLeft size={18} />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setMonthDate(
-                    new Date(today.getFullYear(), today.getMonth(), 1)
-                  );
-                }}
-              >
-                <CalendarDays size={16} />
-                Today
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Next month"
-                onClick={() => {
-                  moveMonth(1);
-                }}
-              >
-                <ChevronRight size={18} />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-md bg-primary/10 px-3 py-2">
-                <p className="text-lg font-bold text-primary">
-                  {classes.length}
-                </p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Total
-                </p>
-              </div>
-              <div className="rounded-md bg-accent/10 px-3 py-2">
-                <p className="text-lg font-bold text-accent">
-                  {publishedCount}
-                </p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Live
-                </p>
-              </div>
-              <div className="rounded-md bg-secondary/25 px-3 py-2">
-                <p className="text-lg font-bold text-secondary-foreground">
-                  {draftCount}
-                </p>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Draft
-                </p>
-              </div>
-            </div>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Next month"
+            onClick={() => {
+              moveMonth(1);
+            }}
+          >
+            <ChevronRight size={18} />
+          </Button>
         </div>
       </section>
 
