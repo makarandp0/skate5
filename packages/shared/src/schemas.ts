@@ -11,6 +11,8 @@ export const rsvpStatusSchema = z.enum(["yes", "no", "maybe", "none"]);
 
 export const classStatusSchema = z.enum(["draft", "published", "cancelled"]);
 
+export const chatMessageKindSchema = z.enum(["user", "system"]);
+
 export const userSchema = z.object({
   id: z.string(),
   firebaseUid: z.string(),
@@ -94,8 +96,16 @@ export const chatMessageSchema = z.object({
   id: z.string(),
   chatId: z.string(),
   userId: z.string(),
+  userDisplayName: z.string(),
+  userPhotoUrl: z.string().nullable(),
+  kind: chatMessageKindSchema,
   text: z.string(),
   createdAt: z.iso.datetime(),
+});
+
+export const classChatResponseSchema = z.object({
+  chat: chatSchema,
+  messages: z.array(chatMessageSchema),
 });
 
 export const firebaseClientConfigSchema = z.object({
@@ -143,6 +153,5 @@ export const createGridEntrySchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  chatId: z.string(),
-  text: z.string().min(1),
+  text: z.string().trim().min(1),
 });

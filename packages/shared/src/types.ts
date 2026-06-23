@@ -3,6 +3,7 @@ import {
   userRoleSchema,
   rsvpStatusSchema,
   classStatusSchema,
+  chatMessageKindSchema,
   userSchema,
   skateClassSchema,
   signupSchema,
@@ -12,6 +13,7 @@ import {
   gridEntrySchema,
   chatSchema,
   chatMessageSchema,
+  classChatResponseSchema,
   firebaseClientConfigSchema,
   createClassSchema,
   updateClassSchema,
@@ -24,6 +26,7 @@ import {
 export type UserRole = z.infer<typeof userRoleSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type ClassStatus = z.infer<typeof classStatusSchema>;
+export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
 export type User = z.infer<typeof userSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
 export type Signup = z.infer<typeof signupSchema>;
@@ -37,6 +40,7 @@ export type Badge = z.infer<typeof badgeSchema>;
 export type GridEntry = z.infer<typeof gridEntrySchema>;
 export type Chat = z.infer<typeof chatSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type ClassChatResponse = z.infer<typeof classChatResponseSchema>;
 export type FirebaseClientConfig = z.infer<typeof firebaseClientConfigSchema>;
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;

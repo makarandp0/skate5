@@ -7,6 +7,8 @@ import {
   type RsvpStatus,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
+  type Chat,
+  type ChatMessage,
   type RouteHandlers,
 } from "@skate5/shared";
 import { db } from "../db/index.js";
@@ -16,6 +18,8 @@ import {
   toSignup,
   toClassAttendancePerson,
   toBadge,
+  toChat,
+  toChatMessage,
 } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
 
@@ -153,6 +157,129 @@ const getCurrentUserRsvp = async (
   return row ? rsvpStatusSchema.parse(row.rsvp) : "none";
 };
 
+const getUserDisplayName = async (userId: string): Promise<string> => {
+  const row = await db
+    .selectFrom("users")
+    .select(["display_name"])
+    .where("id", "=", userId)
+    .executeTakeFirst();
+
+  return row?.display_name ?? "Someone";
+};
+
+const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
+  const existing = await db
+    .selectFrom("chats")
+    .selectAll()
+    .where("topic_id", "=", classId)
+    .executeTakeFirst();
+
+  if (existing) {
+    return toChat(existing);
+  }
+
+  const skateClass = await db
+    .selectFrom("classes")
+    .select(["title"])
+    .where("id", "=", classId)
+    .executeTakeFirst();
+
+  if (!skateClass) {
+    throw new HttpError(404, "Class not found");
+  }
+
+  const created = await db
+    .insertInto("chats")
+    .values({
+      title: skateClass.title,
+      topic_id: classId,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+
+  return toChat(created);
+};
+
+const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
+  const rows = await db
+    .selectFrom("chat_messages")
+    .innerJoin("users", "users.id", "chat_messages.user_id")
+    .select([
+      "chat_messages.id as id",
+      "chat_messages.chat_id as chat_id",
+      "chat_messages.user_id as user_id",
+      "users.display_name as user_display_name",
+      "users.photo_url as user_photo_url",
+      "chat_messages.kind as kind",
+      "chat_messages.text as text",
+      "chat_messages.created_at as created_at",
+    ])
+    .where("chat_messages.chat_id", "=", chatId)
+    .orderBy("chat_messages.created_at", "asc")
+    .execute();
+
+  return rows.map(toChatMessage);
+};
+
+const createChatMessage = async ({
+  chatId,
+  userId,
+  text,
+  kind,
+}: {
+  chatId: string;
+  userId: string;
+  text: string;
+  kind: ChatMessage["kind"];
+}): Promise<ChatMessage> => {
+  const message = await db
+    .insertInto("chat_messages")
+    .values({
+      chat_id: chatId,
+      user_id: userId,
+      kind,
+      text,
+    })
+    .returning(["id"])
+    .executeTakeFirstOrThrow();
+
+  const rows = await db
+    .selectFrom("chat_messages")
+    .innerJoin("users", "users.id", "chat_messages.user_id")
+    .select([
+      "chat_messages.id as id",
+      "chat_messages.chat_id as chat_id",
+      "chat_messages.user_id as user_id",
+      "users.display_name as user_display_name",
+      "users.photo_url as user_photo_url",
+      "chat_messages.kind as kind",
+      "chat_messages.text as text",
+      "chat_messages.created_at as created_at",
+    ])
+    .where("chat_messages.id", "=", message.id)
+    .executeTakeFirstOrThrow();
+
+  return toChatMessage(rows);
+};
+
+const createSystemClassMessage = async ({
+  classId,
+  userId,
+  text,
+}: {
+  classId: string;
+  userId: string;
+  text: string;
+}): Promise<void> => {
+  const chat = await getOrCreateClassChat(classId);
+  await createChatMessage({
+    chatId: chat.id,
+    userId,
+    kind: "system",
+    text,
+  });
+};
+
 const handlers: RouteHandlers = {
   getMe: async ({ user }) => {
     const row = await db
@@ -194,6 +321,14 @@ const handlers: RouteHandlers = {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
+
+    const userDisplayName = await getUserDisplayName(user.uid);
+    await createSystemClassMessage({
+      classId: row.id,
+      userId: user.uid,
+      text: `Class created by ${userDisplayName}.`,
+    });
+
     return toSkateClass(row);
   },
 
@@ -218,6 +353,13 @@ const handlers: RouteHandlers = {
     if (!row) {
       throw new HttpError(404, "Class not found");
     }
+
+    const userDisplayName = await getUserDisplayName(user.uid);
+    await createSystemClassMessage({
+      classId: row.id,
+      userId: user.uid,
+      text: `Class updated by ${userDisplayName}.`,
+    });
 
     return toSkateClass(row);
   },
@@ -261,7 +403,35 @@ const handlers: RouteHandlers = {
         .values({ class_id: params.id, user_id: user.uid, rsvp: body.rsvp })
         .execute();
     }
+
+    const previousRsvp = existing
+      ? rsvpStatusSchema.parse(existing.rsvp)
+      : "none";
+    if (previousRsvp !== body.rsvp) {
+      const userDisplayName = await getUserDisplayName(user.uid);
+      await createSystemClassMessage({
+        classId: params.id,
+        userId: user.uid,
+        text: `${userDisplayName} RSVPed ${body.rsvp}.`,
+      });
+    }
     return { ok: true };
+  },
+
+  getClassChat: async ({ params }) => {
+    const chat = await getOrCreateClassChat(params.id);
+    const messages = await getChatMessages(chat.id);
+    return { chat, messages };
+  },
+
+  sendClassChatMessage: async ({ params, body, user }) => {
+    const chat = await getOrCreateClassChat(params.id);
+    return createChatMessage({
+      chatId: chat.id,
+      userId: user.uid,
+      kind: "user",
+      text: body.text.trim(),
+    });
   },
 
   getBadges: async () => {

@@ -5,10 +5,13 @@ import {
   signupSchema,
   rsvpStatusSchema,
   classAttendanceResponseSchema,
+  classChatResponseSchema,
+  chatMessageSchema,
   badgeSchema,
   createClassSchema,
   updateClassSchema,
   rsvpRequestSchema,
+  sendMessageSchema,
   createBadgeSchema,
   firebaseClientConfigSchema,
 } from "./schemas.js";
@@ -76,6 +79,19 @@ export const contract = {
     params: z.object({ id: z.string() }),
     body: rsvpRequestSchema,
     response: z.object({ ok: z.boolean() }),
+  },
+  getClassChat: {
+    method: "GET",
+    path: "/classes/:id/chat",
+    params: z.object({ id: z.string() }),
+    response: classChatResponseSchema,
+  },
+  sendClassChatMessage: {
+    method: "POST",
+    path: "/classes/:id/chat/messages",
+    params: z.object({ id: z.string() }),
+    body: sendMessageSchema,
+    response: chatMessageSchema,
   },
   getBadges: {
     method: "GET",
