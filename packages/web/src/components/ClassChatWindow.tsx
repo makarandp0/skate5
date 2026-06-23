@@ -31,7 +31,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
   const { profile } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -39,6 +39,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setMessages([]);
     setError(null);
 
     api

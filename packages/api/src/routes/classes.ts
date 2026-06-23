@@ -194,10 +194,23 @@ const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
       title: skateClass.title,
       topic_id: classId,
     })
+    .onConflict((oc) =>
+      oc.column("topic_id").where("topic_id", "is not", null).doNothing()
+    )
     .returningAll()
+    .executeTakeFirst();
+
+  if (created) {
+    return toChat(created);
+  }
+
+  const winner = await db
+    .selectFrom("chats")
+    .selectAll()
+    .where("topic_id", "=", classId)
     .executeTakeFirstOrThrow();
 
-  return toChat(created);
+  return toChat(winner);
 };
 
 const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
