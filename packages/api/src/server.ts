@@ -24,13 +24,23 @@ const reportFatalStartupError = (error: unknown): void => {
   }
 };
 
+const reportFatalRuntimeError = (label: string, error: unknown): void => {
+  console.error(`FATAL runtime: ${label}.`);
+  console.error(`Cause: ${getErrorMessage(error)}`);
+  console.error("The process will exit so Railway can restart it.");
+
+  if (error instanceof Error && error.stack) {
+    console.error(error.stack);
+  }
+};
+
 process.on("unhandledRejection", (reason: unknown) => {
-  reportFatalStartupError(reason);
+  reportFatalRuntimeError("unhandled promise rejection", reason);
   process.exit(1);
 });
 
 process.on("uncaughtException", (error: Error) => {
-  reportFatalStartupError(error);
+  reportFatalRuntimeError("uncaught exception", error);
   process.exit(1);
 });
 
@@ -91,11 +101,7 @@ const start = async (): Promise<void> => {
           database: "ok",
         },
       };
-    } catch (error) {
-      app.log.error(
-        { err: error },
-        "Readiness check failed: database is not reachable"
-      );
+    } catch {
       return reply.status(503).send({
         status: "not_ready",
         checkedAt,
