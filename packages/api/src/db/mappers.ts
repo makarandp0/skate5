@@ -1,5 +1,6 @@
 import {
   classAttendancePersonSchema,
+  chatMessageKindSchema,
   userRoleSchema,
   type User,
   type UserRole,
@@ -7,6 +8,8 @@ import {
   type Signup,
   type ClassAttendancePerson,
   type Badge,
+  type Chat,
+  type ChatMessage,
 } from "@skate5/shared";
 
 interface UserRow {
@@ -77,6 +80,24 @@ interface BadgeRow {
   color: string;
 }
 
+interface ChatRow {
+  id: string;
+  title: string | null;
+  topic_id: string | null;
+  created_at: Date;
+}
+
+interface ChatMessageRow {
+  id: string;
+  chat_id: string;
+  user_id: string;
+  user_display_name: string;
+  user_photo_url: string | null;
+  kind: string;
+  text: string;
+  created_at: Date;
+}
+
 const assertClassStatus = (s: string): SkateClass["status"] => {
   if (s === "draft" || s === "published" || s === "cancelled") return s;
   throw new Error(`Invalid class status: ${s}`);
@@ -127,4 +148,26 @@ export const toClassAttendancePerson = (
 
 export const toBadge = (row: BadgeRow): Badge => {
   return row;
+};
+
+export const toChat = (row: ChatRow): Chat => {
+  return {
+    id: row.id,
+    title: row.title,
+    topicId: row.topic_id,
+    createdAt: row.created_at.toISOString(),
+  };
+};
+
+export const toChatMessage = (row: ChatMessageRow): ChatMessage => {
+  return {
+    id: row.id,
+    chatId: row.chat_id,
+    userId: row.user_id,
+    userDisplayName: row.user_display_name,
+    userPhotoUrl: row.user_photo_url,
+    kind: chatMessageKindSchema.parse(row.kind),
+    text: row.text,
+    createdAt: row.created_at.toISOString(),
+  };
 };

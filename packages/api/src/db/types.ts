@@ -72,6 +72,7 @@ export interface ChatMessagesTable {
   id: Generated<string>;
   chat_id: string;
   user_id: string;
+  kind: string;
   text: string;
   created_at: Generated<Date>;
 }

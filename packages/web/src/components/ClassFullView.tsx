@@ -1,9 +1,11 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
+import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   CircleHelp,
   Clock,
   LoaderCircle,
+  MessageCircle,
   Pencil,
   Save,
   UsersRound,
@@ -405,19 +407,30 @@ export const ClassFullView = ({
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <StatusBadge status={skateClass.status} />
-                {canEdit && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditing(true);
-                    }}
-                  >
-                    <Pencil size={14} />
-                    Edit
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {profile && (
+                    <Link
+                      to={`/classes/${skateClass.id}/chat`}
+                      className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-border bg-background/70 px-3 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/70 active:translate-y-0"
+                    >
+                      <MessageCircle size={14} />
+                      Chat
+                    </Link>
+                  )}
+                  {canEdit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditing(true);
+                      }}
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </div>
               {headingLevel === "h1" ? (
                 <h1 className={headingClassName}>{skateClass.title}</h1>
@@ -579,6 +592,7 @@ export const ClassFullView = ({
           )}
         </div>
       </Card>
+
     </div>
   );
 };

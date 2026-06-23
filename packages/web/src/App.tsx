@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { canAssumeRole, type UserRole } from "@skate5/shared";
+import { cn } from "./lib/utils.js";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { ThemeProvider } from "./hooks/useTheme.js";
 import { Header } from "./components/Header.js";
@@ -9,6 +10,7 @@ import { ClassList } from "./routes/ClassList.js";
 import { ClassCreate } from "./routes/ClassCreate.js";
 import { ClassDate } from "./routes/ClassDate.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
+import { ClassChat } from "./routes/ClassChat.js";
 import { Profile } from "./routes/Profile.js";
 import { Config } from "./routes/Config.js";
 import type { ReactNode } from "react";
@@ -38,11 +40,16 @@ const RequireRole = ({
 
 const AuthBottomNav = () => {
   const { profile } = useAuth();
+  const location = useLocation();
   if (!profile) return null;
+  if (/^\/classes\/[^/]+\/chat$/.test(location.pathname)) return null;
   return <BottomNav />;
 };
 
 export const App = () => {
+  const location = useLocation();
+  const isChatRoute = /^\/classes\/[^/]+\/chat$/.test(location.pathname);
+
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -56,7 +63,12 @@ export const App = () => {
             className="pointer-events-none fixed inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(37,99,235,0.08),transparent)] dark:bg-[linear-gradient(0deg,rgba(96,165,250,0.09),transparent)]"
           />
           <Header />
-          <main className="relative mx-auto max-w-4xl px-4 pb-24 pt-6 sm:px-6 sm:pb-10">
+          <main
+            className={cn(
+              "relative mx-auto max-w-4xl px-4 pt-6 sm:px-6 sm:pb-10",
+              isChatRoute ? "pb-4" : "pb-24"
+            )}
+          >
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route
@@ -80,6 +92,14 @@ export const App = () => {
                 element={
                   <RequireAuth>
                     <ClassDate />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/classes/:id/chat"
+                element={
+                  <RequireAuth>
+                    <ClassChat />
                   </RequireAuth>
                 }
               />
