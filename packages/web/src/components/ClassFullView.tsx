@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Pencil,
   Save,
+  ShieldCheck,
   UsersRound,
   XCircle,
   type LucideIcon,
@@ -111,6 +112,9 @@ const getRsvpLabel = (rsvp: RsvpStatus): string => {
   }
 };
 
+const adminActionClassName =
+  "border-amber-300/80 bg-amber-50/80 text-amber-950 shadow-sm shadow-amber-900/5 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100";
+
 const RsvpButton = ({
   label,
   icon: Icon,
@@ -145,6 +149,11 @@ const RsvpButton = ({
       </span>
     </button>
   );
+};
+
+type PendingAdminRsvp = {
+  userId: string;
+  rsvp: RsvpStatus;
 };
 
 type ClassFullViewProps = {
@@ -186,6 +195,8 @@ export const ClassFullView = ({
   const [adminRsvpSavingUserId, setAdminRsvpSavingUserId] = useState<
     string | null
   >(null);
+  const [pendingAdminRsvp, setPendingAdminRsvp] =
+    useState<PendingAdminRsvp | null>(null);
   const [adminRsvpError, setAdminRsvpError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -195,6 +206,8 @@ export const ClassFullView = ({
     setEditDescription(skateClass.description ?? "");
     setEditStatus(skateClass.status);
     setEditError(null);
+    setPendingAdminRsvp(null);
+    setAdminRsvpError(null);
   }, [
     rawDate,
     skateClass.description,
@@ -224,6 +237,8 @@ export const ClassFullView = ({
 
   const loadAttendance = async (rsvp: RsvpStatus): Promise<void> => {
     setAttendanceLoading(true);
+    setPendingAdminRsvp(null);
+    setAdminRsvpError(null);
     try {
       const attendanceResponse = await api.getClassAttendance({
         params: { id: skateClass.id, rsvp },
@@ -271,6 +286,7 @@ export const ClassFullView = ({
       setAttendanceCounts(updated.counts);
       setAttendancePeople(updated.people);
       setCurrentRsvp(updated.currentUserRsvp);
+      setPendingAdminRsvp(null);
     } catch (err) {
       console.error("setUserRsvp failed:", err);
       setAdminRsvpError("Could not update that RSVP. Try again.");
@@ -287,7 +303,12 @@ export const ClassFullView = ({
       (option) => option.rsvp === event.target.value
     );
     if (!selected) return;
-    void handleAdminRsvp(person, selected.rsvp);
+    setAdminRsvpError(null);
+    setPendingAdminRsvp(
+      selected.rsvp === person.rsvp
+        ? null
+        : { userId: person.userId, rsvp: selected.rsvp }
+    );
   };
 
   const resetEditForm = (): void => {
@@ -496,7 +517,9 @@ export const ClassFullView = ({
                       onClick={() => {
                         setEditing(true);
                       }}
+                      className={cn("border", adminActionClassName)}
                     >
+                      <ShieldCheck size={14} />
                       <Pencil size={14} />
                       Edit
                     </Button>
@@ -637,52 +660,113 @@ export const ClassFullView = ({
               ))}
             </div>
           ) : attendancePeople.length > 0 ? (
-            attendancePeople.map((person) => (
-              <div
-                key={person.userId}
-                className="flex items-center gap-3 rounded-md bg-muted/45 px-3 py-2"
-              >
-                <Avatar
-                  src={person.photoUrl}
-                  name={person.displayName}
-                  className="h-9 w-9"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {person.displayName}
-                    {person.userId === profile?.id && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        You
+            attendancePeople.map((person) => {
+              const pendingRsvp =
+                pendingAdminRsvp?.userId === person.userId
+                  ? pendingAdminRsvp.rsvp
+                  : null;
+              const displayedRsvp = pendingRsvp ?? person.rsvp;
+              const saving = adminRsvpSavingUserId === person.userId;
+
+              return (
+                <div
+                  key={person.userId}
+                  className={cn(
+                    "flex flex-col gap-2 rounded-md bg-muted/45 px-3 py-2 sm:flex-row sm:items-center",
+                    pendingRsvp && "border",
+                    pendingRsvp && adminActionClassName
+                  )}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <Avatar
+                      src={person.photoUrl}
+                      name={person.displayName}
+                      className="h-9 w-9"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {person.displayName}
+                        {person.userId === profile?.id && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            You
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {pendingRsvp
+                          ? `${getRsvpLabel(person.rsvp)} -> ${getRsvpLabel(
+                              pendingRsvp
+                            )}`
+                          : getRsvpLabel(person.rsvp)}
+                      </p>
+                    </div>
+                  </div>
+                  {canManageAttendance && (
+                    <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                      <span className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-300/80 bg-amber-100/80 px-2 text-xs font-semibold text-amber-950 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100">
+                        <ShieldCheck size={13} />
+                        Admin
                       </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {getRsvpLabel(person.rsvp)}
-                  </p>
+                      <label>
+                        <span className="sr-only">
+                          Set RSVP for {person.displayName}
+                        </span>
+                        <select
+                          value={displayedRsvp}
+                          onChange={(event) => {
+                            handleAdminRsvpSelect(event, person);
+                          }}
+                          disabled={
+                            adminRsvpSavingUserId !== null ||
+                            (pendingAdminRsvp !== null && !pendingRsvp)
+                          }
+                          className="h-9 rounded-md border border-amber-300/80 bg-background/90 px-2 text-xs font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                        >
+                          {adminRsvpOptions.map((option) => (
+                            <option key={option.rsvp} value={option.rsvp}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {pendingRsvp && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              void handleAdminRsvp(person, pendingRsvp);
+                            }}
+                            disabled={saving}
+                            className="h-9"
+                          >
+                            {saving ? (
+                              <LoaderCircle size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle2 size={14} />
+                            )}
+                            Apply
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setPendingAdminRsvp(null);
+                            }}
+                            disabled={saving}
+                            className="h-9"
+                          >
+                            <XCircle size={14} />
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {canManageAttendance && (
-                  <label className="shrink-0">
-                    <span className="sr-only">
-                      Set RSVP for {person.displayName}
-                    </span>
-                    <select
-                      value={person.rsvp}
-                      onChange={(event) => {
-                        handleAdminRsvpSelect(event, person);
-                      }}
-                      disabled={adminRsvpSavingUserId !== null}
-                      className="h-9 rounded-md border border-border bg-background/80 px-2 text-xs font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                    >
-                      {adminRsvpOptions.map((option) => (
-                        <option key={option.rsvp} value={option.rsvp}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            ))
+              );
+            })
           ) : (
             <p className="rounded-md bg-muted/45 px-3 py-6 text-center text-sm text-muted-foreground">
               {selectedTab?.emptyMessage ?? "No responses in this group."}
