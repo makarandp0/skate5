@@ -692,10 +692,6 @@ export const ClassFullView = ({
                   </div>
                   {canManageAttendance && (
                     <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
-                      <span className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-300/80 bg-amber-100/80 px-2 text-xs font-semibold text-amber-950 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100">
-                        <ShieldCheck size={13} />
-                        Admin
-                      </span>
                       {saving ? (
                         <span className="inline-flex h-9 items-center gap-2 rounded-md border border-amber-300/80 bg-background/90 px-3 text-xs font-medium text-muted-foreground">
                           <LoaderCircle size={14} className="animate-spin" />
