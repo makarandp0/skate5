@@ -71,35 +71,73 @@ export const Login = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugEvents, setDebugEvents] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement | null>(null);
 
   if (loading) return null;
   if (profile) return <Navigate to="/" replace />;
 
-  const submitCredentials = async (form: HTMLFormElement): Promise<void> => {
+  const appendDebug = (message: string): void => {
+    if (!import.meta.env.DEV) return;
+
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugEvents((events) => [`${timestamp} ${message}`, ...events].slice(0, 8));
+  };
+
+  const submitCredentials = async (
+    form: HTMLFormElement,
+    source: string
+  ): Promise<void> => {
+    appendDebug(`Submit requested from ${source}.`);
+
     const formData = new FormData(form);
     const emailValue = formData.get("email");
     const passwordValue = formData.get("password");
 
     if (typeof emailValue !== "string" || typeof passwordValue !== "string") {
+      appendDebug("FormData did not contain string email/password values.");
       setError("Enter an email and password.");
       return;
     }
 
     const submittedEmail = emailValue.trim();
     const submittedPassword = passwordValue;
+    appendDebug(
+      `Read form values: email=${submittedEmail || "(blank)"}, password=${
+        submittedPassword ? "present" : "blank"
+      }.`
+    );
+
+    if (!submittedEmail || !submittedPassword) {
+      appendDebug("Client validation failed: missing email or password.");
+      setError("Enter an email and password.");
+      return;
+    }
+
+    if (submittedPassword.length < 6) {
+      appendDebug("Client validation failed: password is shorter than 6 characters.");
+      setError("Use a password with at least 6 characters.");
+      return;
+    }
 
     setEmail(submittedEmail);
     setPassword(submittedPassword);
     setError(null);
     setSubmitting(true);
     try {
+      appendDebug(
+        mode === "sign-up"
+          ? "Calling Firebase createUserWithEmailAndPassword."
+          : "Calling Firebase signInWithEmailAndPassword."
+      );
       if (mode === "sign-up") {
         await signUpWithEmail(submittedEmail, submittedPassword);
       } else {
         await signInWithEmail(submittedEmail, submittedPassword);
       }
+      appendDebug("Firebase auth call resolved; waiting for profile redirect.");
     } catch (err) {
+      appendDebug(`Auth failed: ${getAuthErrorCode(err) ?? "unknown error"}.`);
       setError(getAuthErrorMessage(err));
     } finally {
       setSubmitting(false);
@@ -110,12 +148,25 @@ export const Login = () => {
     event: SyntheticEvent<HTMLFormElement>
   ): Promise<void> => {
     event.preventDefault();
-    await submitCredentials(event.currentTarget);
+    appendDebug("Native form submit event fired.");
+    await submitCredentials(event.currentTarget, "form submit");
   };
 
   const handleSubmitClick = (): void => {
-    if (!formRef.current || !formRef.current.reportValidity()) return;
-    void submitCredentials(formRef.current);
+    appendDebug("Sign in button click handler fired.");
+    if (!formRef.current) {
+      appendDebug("No form ref was available.");
+      setError("Login form is not ready yet.");
+      return;
+    }
+
+    if (!formRef.current.checkValidity()) {
+      appendDebug("Browser validity check failed.");
+      formRef.current.reportValidity();
+      return;
+    }
+
+    void submitCredentials(formRef.current, "button click");
   };
 
   const isSignUp = mode === "sign-up";
@@ -211,6 +262,9 @@ export const Login = () => {
             size="lg"
             className="w-full"
             disabled={submitting}
+            onPointerDown={() => {
+              appendDebug("Sign in button pointer down.");
+            }}
             onClick={handleSubmitClick}
           >
             {submitting
@@ -245,11 +299,30 @@ export const Login = () => {
             variant="outline"
             className="w-full"
             onClick={() => {
+              appendDebug("Google sign-in button clicked.");
               void signIn();
             }}
           >
             Sign in with Google
           </Button>
+
+          {import.meta.env.DEV && (
+            <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground">Login debug</p>
+              <p>
+                Mode: {isSignUp ? "sign-up" : "sign-in"} · Submitting:{" "}
+                {submitting ? "yes" : "no"} · Email state:{" "}
+                {email ? "present" : "blank"}
+              </p>
+              <ul className="mt-1 space-y-1">
+                {debugEvents.length > 0 ? (
+                  debugEvents.map((event) => <li key={event}>{event}</li>)
+                ) : (
+                  <li>Waiting for a login action.</li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
       </form>
     </div>
