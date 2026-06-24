@@ -1,4 +1,4 @@
-import { useState, type SyntheticEvent } from "react";
+import { useRef, useState, type SyntheticEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { FirebaseError } from "firebase/app";
 import { useAuth } from "../hooks/useAuth.js";
@@ -71,27 +71,51 @@ export const Login = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   if (loading) return null;
   if (profile) return <Navigate to="/" replace />;
 
-  const handleSubmit = async (
-    event: SyntheticEvent<HTMLFormElement>
-  ): Promise<void> => {
-    event.preventDefault();
+  const submitCredentials = async (form: HTMLFormElement): Promise<void> => {
+    const formData = new FormData(form);
+    const emailValue = formData.get("email");
+    const passwordValue = formData.get("password");
+
+    if (typeof emailValue !== "string" || typeof passwordValue !== "string") {
+      setError("Enter an email and password.");
+      return;
+    }
+
+    const submittedEmail = emailValue.trim();
+    const submittedPassword = passwordValue;
+
+    setEmail(submittedEmail);
+    setPassword(submittedPassword);
     setError(null);
     setSubmitting(true);
     try {
       if (mode === "sign-up") {
-        await signUpWithEmail(email, password);
+        await signUpWithEmail(submittedEmail, submittedPassword);
       } else {
-        await signInWithEmail(email, password);
+        await signInWithEmail(submittedEmail, submittedPassword);
       }
     } catch (err) {
       setError(getAuthErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (
+    event: SyntheticEvent<HTMLFormElement>
+  ): Promise<void> => {
+    event.preventDefault();
+    await submitCredentials(event.currentTarget);
+  };
+
+  const handleSubmitClick = (): void => {
+    if (!formRef.current || !formRef.current.reportValidity()) return;
+    void submitCredentials(formRef.current);
   };
 
   const isSignUp = mode === "sign-up";
@@ -120,6 +144,7 @@ export const Login = () => {
       </div>
 
       <form
+        ref={formRef}
         className="rounded-lg border border-border/80 bg-background/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur sm:p-6"
         onSubmit={(event) => {
           void handleSubmit(event);
@@ -144,6 +169,7 @@ export const Login = () => {
             </label>
             <input
               id="email"
+              name="email"
               type="email"
               autoComplete="email"
               value={email}
@@ -161,6 +187,7 @@ export const Login = () => {
             </label>
             <input
               id="password"
+              name="password"
               type="password"
               autoComplete={isSignUp ? "new-password" : "current-password"}
               value={password}
@@ -180,10 +207,11 @@ export const Login = () => {
           )}
 
           <Button
-            type="submit"
+            type="button"
             size="lg"
             className="w-full"
             disabled={submitting}
+            onClick={handleSubmitClick}
           >
             {submitting
               ? "Please wait..."
@@ -212,6 +240,7 @@ export const Login = () => {
           </div>
 
           <Button
+            type="button"
             size="lg"
             variant="outline"
             className="w-full"
