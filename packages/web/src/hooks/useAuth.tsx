@@ -99,16 +99,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return getAssignableRoles(profile.actualRole);
   }, [profile]);
 
+  const finishSignIn = async (user: FirebaseUser): Promise<void> => {
+    setFirebaseUser(user);
+    setLoading(true);
+
+    try {
+      await user.getIdToken(true);
+      setProfile(await loadProfile());
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signIn = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(getFirebaseAuth(), provider);
+    const credential = await signInWithPopup(getFirebaseAuth(), provider);
+    await finishSignIn(credential.user);
   };
 
   const signInWithEmail = async (
     email: string,
     password: string
   ): Promise<void> => {
-    await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+    const credential = await signInWithEmailAndPassword(
+      getFirebaseAuth(),
+      email,
+      password
+    );
+    await finishSignIn(credential.user);
   };
 
   const signUpWithEmail = async (
@@ -120,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password
     );
-    await credential.user.getIdToken(true);
+    await finishSignIn(credential.user);
   };
 
   const logOut = async (): Promise<void> => {
