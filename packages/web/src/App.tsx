@@ -10,6 +10,7 @@ import { ClassList } from "./routes/ClassList.js";
 import { ClassCreate } from "./routes/ClassCreate.js";
 import { ClassDate } from "./routes/ClassDate.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
+import { ClassGrid } from "./routes/ClassGrid.js";
 import { ClassChat } from "./routes/ClassChat.js";
 import { Profile } from "./routes/Profile.js";
 import { Config } from "./routes/Config.js";
@@ -100,6 +101,14 @@ export const App = () => {
                 element={
                   <RequireAuth>
                     <ClassChat />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/classes/:id/grid"
+                element={
+                  <RequireAuth>
+                    <ClassGrid />
                   </RequireAuth>
                 }
               />

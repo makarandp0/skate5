@@ -1,6 +1,8 @@
 import {
   classAttendancePersonSchema,
   chatMessageKindSchema,
+  gridEntrySchema,
+  gridInstructorSchema,
   userRoleSchema,
   type User,
   type UserRole,
@@ -8,6 +10,8 @@ import {
   type Signup,
   type ClassAttendancePerson,
   type Badge,
+  type GridEntry,
+  type GridInstructor,
   type Chat,
   type ChatMessage,
 } from "@skate5/shared";
@@ -80,6 +84,23 @@ interface BadgeRow {
   color: string;
 }
 
+interface GridEntryRow {
+  id: string;
+  class_id: string;
+  order: number;
+  badge_id: string | null;
+  time: string | null;
+  description: string | null;
+  instructor_ids: unknown;
+}
+
+interface GridInstructorRow {
+  user_id: string;
+  display_name: string;
+  photo_url: string | null;
+  rsvp: string | null;
+}
+
 interface ChatRow {
   id: string;
   title: string | null;
@@ -148,6 +169,27 @@ export const toClassAttendancePerson = (
 
 export const toBadge = (row: BadgeRow): Badge => {
   return row;
+};
+
+export const toGridEntry = (row: GridEntryRow): GridEntry => {
+  return gridEntrySchema.parse({
+    id: row.id,
+    classId: row.class_id,
+    order: row.order,
+    badgeId: row.badge_id,
+    time: row.time,
+    description: row.description,
+    instructorIds: row.instructor_ids,
+  });
+};
+
+export const toGridInstructor = (row: GridInstructorRow): GridInstructor => {
+  return gridInstructorSchema.parse({
+    userId: row.user_id,
+    displayName: row.display_name,
+    photoUrl: row.photo_url,
+    rsvp: row.rsvp ?? "none",
+  });
 };
 
 export const toChat = (row: ChatRow): Chat => {

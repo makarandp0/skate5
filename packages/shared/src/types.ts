@@ -11,6 +11,8 @@ import {
   classAttendanceResponseSchema,
   badgeSchema,
   gridEntrySchema,
+  gridInstructorSchema,
+  classGridResponseSchema,
   chatSchema,
   chatMessageSchema,
   classChatResponseSchema,
@@ -20,6 +22,9 @@ import {
   rsvpRequestSchema,
   createBadgeSchema,
   createGridEntrySchema,
+  updateGridEntrySchema,
+  reorderGridEntriesSchema,
+  publishGridSchema,
   sendMessageSchema,
 } from "./schemas.js";
 
@@ -38,6 +43,8 @@ export type ClassAttendanceResponse = z.infer<
 >;
 export type Badge = z.infer<typeof badgeSchema>;
 export type GridEntry = z.infer<typeof gridEntrySchema>;
+export type GridInstructor = z.infer<typeof gridInstructorSchema>;
+export type ClassGridResponse = z.infer<typeof classGridResponseSchema>;
 export type Chat = z.infer<typeof chatSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ClassChatResponse = z.infer<typeof classChatResponseSchema>;
@@ -48,4 +55,7 @@ export type UpdateClassInput = z.infer<typeof updateClassSchema>;
 export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
 export type CreateBadgeInput = z.infer<typeof createBadgeSchema>;
 export type CreateGridEntryInput = z.infer<typeof createGridEntrySchema>;
+export type UpdateGridEntryInput = z.infer<typeof updateGridEntrySchema>;
+export type ReorderGridEntriesInput = z.infer<typeof reorderGridEntriesSchema>;
+export type PublishGridInput = z.infer<typeof publishGridSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

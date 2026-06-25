@@ -26,8 +26,17 @@ const getDevNetworkOrigin = (port: number): string => {
   return `http://${address}:${String(port)}`;
 };
 
-const devPort = 5173;
+const parsePort = (value: string | undefined, fallback: number): number => {
+  if (!value) return fallback;
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 ? port : fallback;
+};
+
+const devPort = parsePort(process.env.SKATE5_WEB_PORT, 5173);
+const apiPort = parsePort(process.env.SKATE5_API_PORT, 3000);
 const devOrigin = getDevNetworkOrigin(devPort);
+const apiTarget =
+  process.env.SKATE5_API_TARGET ?? `http://127.0.0.1:${String(apiPort)}`;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -46,7 +55,7 @@ export default defineConfig({
     host: "0.0.0.0",
     port: devPort,
     proxy: {
-      "/api": "http://127.0.0.1:3000",
+      "/api": apiTarget,
     },
   },
 });

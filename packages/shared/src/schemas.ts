@@ -85,6 +85,20 @@ export const gridEntrySchema = z.object({
   instructorIds: z.array(z.string()),
 });
 
+export const gridInstructorSchema = z.object({
+  userId: z.string(),
+  displayName: z.string(),
+  photoUrl: z.string().nullable(),
+  rsvp: rsvpStatusSchema,
+});
+
+export const classGridResponseSchema = z.object({
+  class: skateClassSchema,
+  entries: z.array(gridEntrySchema),
+  badges: z.array(badgeSchema),
+  instructors: z.array(gridInstructorSchema),
+});
+
 export const chatSchema = z.object({
   id: z.string(),
   title: z.string().nullable(),
@@ -144,12 +158,27 @@ export const createBadgeSchema = z.object({
 });
 
 export const createGridEntrySchema = z.object({
-  classId: z.string(),
   order: z.int().default(0),
-  badgeId: z.string().optional(),
-  time: z.string().optional(),
-  description: z.string().optional(),
+  badgeId: z.string().nullable().optional(),
+  time: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
   instructorIds: z.array(z.string()).default([]),
+});
+
+export const updateGridEntrySchema = z.object({
+  order: z.int(),
+  badgeId: z.string().nullable().optional(),
+  time: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  instructorIds: z.array(z.string()),
+});
+
+export const reorderGridEntriesSchema = z.object({
+  entryIds: z.array(z.string()).min(1),
+});
+
+export const publishGridSchema = z.object({
+  published: z.boolean(),
 });
 
 export const sendMessageSchema = z.object({

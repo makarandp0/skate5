@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   CircleHelp,
   Clock,
+  Grid3X3,
   LoaderCircle,
   MessageCircle,
   Pencil,
@@ -503,6 +504,20 @@ export const ClassFullView = ({
                     >
                       <MessageCircle size={14} />
                       Chat
+                    </Link>
+                  )}
+                  {(canEdit || skateClass.gridPublished) && (
+                    <Link
+                      to={`/classes/${skateClass.id}/grid`}
+                      className={cn(
+                        "inline-flex h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0",
+                        canEdit
+                          ? adminActionClassName
+                          : "border-border bg-background/70 hover:bg-muted/70"
+                      )}
+                    >
+                      <Grid3X3 size={14} />
+                      Grid
                     </Link>
                   )}
                   {canEdit && (

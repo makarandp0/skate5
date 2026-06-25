@@ -1,12 +1,15 @@
 import { FastifyInstance } from "fastify";
+import { sql } from "kysely";
 import { z } from "zod";
 import {
   registerRoutes,
   rsvpStatusSchema,
   canAssumeRole,
+  userRoleSchema,
   type RsvpStatus,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
+  type ClassGridResponse,
   type Chat,
   type ChatMessage,
   type RouteHandlers,
@@ -18,12 +21,18 @@ import {
   toSignup,
   toClassAttendancePerson,
   toBadge,
+  toGridEntry,
+  toGridInstructor,
   toChat,
   toChatMessage,
 } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
 
 const countSchema = z.coerce.number().int().nonnegative();
+
+const jsonbStringArray = (values: string[]) => {
+  return sql<string[]>`${JSON.stringify(values)}::jsonb`;
+};
 
 class HttpError extends Error {
   statusCode: number;
@@ -353,6 +362,275 @@ const createSystemClassMessage = async ({
   });
 };
 
+const requireAdmin = (role: Parameters<typeof canAssumeRole>[0]): void => {
+  if (!canAssumeRole(role, "admin")) {
+    throw new HttpError(403, "Only admins can manage the class grid");
+  }
+};
+
+const toDateKey = (value: string): string | null => {
+  const dateOnly = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (dateOnly) return dateOnly;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const year = String(parsed.getFullYear());
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const shiftDateKey = (dateKey: string, days: number): string => {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() + days);
+
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getGridEntriesForClass = async (
+  classId: string
+): Promise<ClassGridResponse["entries"]> => {
+  const rows = await db
+    .selectFrom("grid_entries")
+    .selectAll()
+    .where("class_id", "=", classId)
+    .orderBy("order", "asc")
+    .orderBy("id", "asc")
+    .execute();
+
+  return rows.map(toGridEntry);
+};
+
+const getBadges = async (): Promise<ClassGridResponse["badges"]> => {
+  const rows = await db
+    .selectFrom("badges")
+    .selectAll()
+    .orderBy("group", "asc")
+    .orderBy("text", "asc")
+    .execute();
+  return rows.map(toBadge);
+};
+
+const getGridInstructors = async ({
+  classId,
+  entries,
+  canManage,
+}: {
+  classId: string;
+  entries: ClassGridResponse["entries"];
+  canManage: boolean;
+}): Promise<ClassGridResponse["instructors"]> => {
+  const assignedUserIds = new Set<string>();
+
+  for (const entry of entries) {
+    for (const instructorId of entry.instructorIds) {
+      assignedUserIds.add(instructorId);
+    }
+  }
+
+  const signupRows = await db
+    .selectFrom("signups")
+    .select(["user_id", "rsvp", "updated_at"])
+    .where("class_id", "=", classId)
+    .orderBy("updated_at", "desc")
+    .execute();
+  const latestRsvpByUser = new Map<string, RsvpStatus>();
+
+  for (const row of signupRows) {
+    if (!latestRsvpByUser.has(row.user_id)) {
+      latestRsvpByUser.set(row.user_id, rsvpStatusSchema.parse(row.rsvp));
+    }
+  }
+
+  const userRows = await db
+    .selectFrom("users")
+    .select([
+      "users.id as user_id",
+      "users.display_name as display_name",
+      "users.photo_url as photo_url",
+      "users.role as role",
+    ])
+    .orderBy("users.display_name", "asc")
+    .execute();
+
+  return userRows
+    .filter((row) => {
+      const role = userRoleSchema.parse(row.role);
+      const rsvp = latestRsvpByUser.get(row.user_id) ?? "none";
+      return (
+        assignedUserIds.has(row.user_id) ||
+        (canManage && canAssumeRole(role, "instructor") && rsvp === "yes")
+      );
+    })
+    .map((row) =>
+      toGridInstructor({
+        ...row,
+        rsvp: latestRsvpByUser.get(row.user_id) ?? "none",
+      })
+    );
+};
+
+const getClassGridResponse = async ({
+  classId,
+  canManage,
+}: {
+  classId: string;
+  canManage: boolean;
+}): Promise<ClassGridResponse> => {
+  const classRow = await db
+    .selectFrom("classes")
+    .selectAll()
+    .where("id", "=", classId)
+    .executeTakeFirst();
+
+  if (!classRow) {
+    throw new HttpError(404, "Class not found");
+  }
+
+  const skateClass = toSkateClass(classRow);
+  if (!canManage && !skateClass.gridPublished) {
+    return {
+      class: skateClass,
+      entries: [],
+      badges: [],
+      instructors: [],
+    };
+  }
+
+  const entries = await getGridEntriesForClass(classId);
+  const [badges, instructors] = await Promise.all([
+    getBadges(),
+    getGridInstructors({ classId, entries, canManage }),
+  ]);
+
+  return {
+    class: skateClass,
+    entries,
+    badges,
+    instructors,
+  };
+};
+
+const requireClassGridEntry = async ({
+  classId,
+  entryId,
+}: {
+  classId: string;
+  entryId: string;
+}): Promise<void> => {
+  const row = await db
+    .selectFrom("grid_entries")
+    .select(["id"])
+    .where("id", "=", entryId)
+    .where("class_id", "=", classId)
+    .executeTakeFirst();
+
+  if (!row) {
+    throw new HttpError(404, "Grid entry not found");
+  }
+};
+
+const updateGridOrder = async ({
+  classId,
+  entryIds,
+}: {
+  classId: string;
+  entryIds: string[];
+}): Promise<void> => {
+  const existingRows = await db
+    .selectFrom("grid_entries")
+    .select(["id"])
+    .where("class_id", "=", classId)
+    .execute();
+  const existingIds = existingRows.map((row) => row.id);
+
+  if (entryIds.length !== existingIds.length) {
+    throw new HttpError(400, "Grid order must include every entry exactly once");
+  }
+
+  const seen = new Set<string>();
+  for (const entryId of entryIds) {
+    if (seen.has(entryId) || !existingIds.includes(entryId)) {
+      throw new HttpError(
+        400,
+        "Grid order must include every entry exactly once"
+      );
+    }
+    seen.add(entryId);
+  }
+
+  await db.transaction().execute(async (trx) => {
+    for (const [order, entryId] of entryIds.entries()) {
+      await trx
+        .updateTable("grid_entries")
+        .set({ order })
+        .where("id", "=", entryId)
+        .where("class_id", "=", classId)
+        .execute();
+    }
+  });
+};
+
+const duplicatePreviousGrid = async (classId: string): Promise<void> => {
+  const currentClass = await db
+    .selectFrom("classes")
+    .select(["date"])
+    .where("id", "=", classId)
+    .executeTakeFirst();
+
+  if (!currentClass) {
+    throw new HttpError(404, "Class not found");
+  }
+
+  const currentEntries = await getGridEntriesForClass(classId);
+  if (currentEntries.length > 0) {
+    throw new HttpError(409, "Current class already has grid entries");
+  }
+
+  const currentDateKey = toDateKey(currentClass.date);
+  if (!currentDateKey) {
+    throw new HttpError(400, "Class date is invalid");
+  }
+
+  const previousDateKey = shiftDateKey(currentDateKey, -7);
+  const classRows = await db
+    .selectFrom("classes")
+    .select(["id", "date"])
+    .execute();
+  const previousClass = classRows.find(
+    (row) => row.id !== classId && toDateKey(row.date) === previousDateKey
+  );
+
+  if (!previousClass) {
+    return;
+  }
+
+  const previousEntries = await getGridEntriesForClass(previousClass.id);
+  if (previousEntries.length === 0) {
+    return;
+  }
+
+  await db.transaction().execute(async (trx) => {
+    for (const entry of previousEntries) {
+      await trx
+        .insertInto("grid_entries")
+        .values({
+          class_id: classId,
+          order: entry.order,
+          badge_id: entry.badgeId,
+          time: entry.time,
+          description: entry.description,
+          instructor_ids: jsonbStringArray([]),
+        })
+        .execute();
+    }
+  });
+};
+
 const handlers: RouteHandlers = {
   getMe: async ({ user }) => {
     const row = await db
@@ -531,6 +809,133 @@ const handlers: RouteHandlers = {
       .returningAll()
       .executeTakeFirstOrThrow();
     return toBadge(row);
+  },
+
+  getClassGrid: async ({ params, user }) => {
+    return getClassGridResponse({
+      classId: params.id,
+      canManage: canAssumeRole(user.role, "admin"),
+    });
+  },
+
+  createClassGridEntry: async ({ params, body, user }) => {
+    requireAdmin(user.role);
+    await ensureClassExists(params.id);
+
+    await db
+      .insertInto("grid_entries")
+      .values({
+        class_id: params.id,
+        order: body.order,
+        badge_id: body.badgeId ?? null,
+        time: body.time ?? null,
+        description: body.description ?? null,
+        instructor_ids: jsonbStringArray(body.instructorIds),
+      })
+      .execute();
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  updateClassGridEntry: async ({ params, body, user }) => {
+    requireAdmin(user.role);
+    await requireClassGridEntry({
+      classId: params.id,
+      entryId: params.entryId,
+    });
+
+    await db
+      .updateTable("grid_entries")
+      .set({
+        order: body.order,
+        badge_id: body.badgeId ?? null,
+        time: body.time ?? null,
+        description: body.description ?? null,
+        instructor_ids: jsonbStringArray(body.instructorIds),
+      })
+      .where("id", "=", params.entryId)
+      .where("class_id", "=", params.id)
+      .execute();
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  deleteClassGridEntry: async ({ params, user }) => {
+    requireAdmin(user.role);
+    await requireClassGridEntry({
+      classId: params.id,
+      entryId: params.entryId,
+    });
+
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .deleteFrom("grid_entries")
+        .where("id", "=", params.entryId)
+        .where("class_id", "=", params.id)
+        .execute();
+
+      const rows = await trx
+        .selectFrom("grid_entries")
+        .select(["id"])
+        .where("class_id", "=", params.id)
+        .orderBy("order", "asc")
+        .orderBy("id", "asc")
+        .execute();
+
+      for (const [order, row] of rows.entries()) {
+        await trx
+          .updateTable("grid_entries")
+          .set({ order })
+          .where("id", "=", row.id)
+          .where("class_id", "=", params.id)
+          .execute();
+      }
+    });
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  reorderClassGridEntries: async ({ params, body, user }) => {
+    requireAdmin(user.role);
+    await updateGridOrder({ classId: params.id, entryIds: body.entryIds });
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  duplicatePreviousClassGrid: async ({ params, user }) => {
+    requireAdmin(user.role);
+    await duplicatePreviousGrid(params.id);
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  publishClassGrid: async ({ params, body, user }) => {
+    requireAdmin(user.role);
+
+    const row = await db
+      .updateTable("classes")
+      .set({
+        grid_published: body.published,
+        updated_at: new Date(),
+      })
+      .where("id", "=", params.id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new HttpError(404, "Class not found");
+    }
+
+    const userDisplayName = await getUserDisplayName(user.uid);
+    await createSystemClassMessage({
+      classId: params.id,
+      userId: user.uid,
+      text: body.published
+        ? `Grid published by ${userDisplayName}.`
+        : `Grid unpublished by ${userDisplayName}.`,
+    });
+
+    return getClassGridResponse({ classId: params.id, canManage: true });
   },
 };
 
