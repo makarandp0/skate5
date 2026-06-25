@@ -80,6 +80,13 @@ export const contract = {
     body: rsvpRequestSchema,
     response: z.object({ ok: z.boolean() }),
   },
+  setUserRsvp: {
+    method: "PUT",
+    path: "/classes/:id/attendance/:userId/rsvp",
+    params: z.object({ id: z.string(), userId: z.string() }),
+    body: rsvpRequestSchema,
+    response: z.object({ ok: z.boolean() }),
+  },
   getClassChat: {
     method: "GET",
     path: "/classes/:id/chat",

@@ -157,6 +157,18 @@ const getCurrentUserRsvp = async (
   return row ? rsvpStatusSchema.parse(row.rsvp) : "none";
 };
 
+const ensureClassExists = async (classId: string): Promise<void> => {
+  const row = await db
+    .selectFrom("classes")
+    .select(["id"])
+    .where("id", "=", classId)
+    .executeTakeFirst();
+
+  if (!row) {
+    throw new HttpError(404, "Class not found");
+  }
+};
+
 const getUserDisplayName = async (userId: string): Promise<string> => {
   const row = await db
     .selectFrom("users")
@@ -165,6 +177,54 @@ const getUserDisplayName = async (userId: string): Promise<string> => {
     .executeTakeFirst();
 
   return row?.display_name ?? "Someone";
+};
+
+const getRequiredUserDisplayName = async (userId: string): Promise<string> => {
+  const row = await db
+    .selectFrom("users")
+    .select(["display_name"])
+    .where("id", "=", userId)
+    .executeTakeFirst();
+
+  if (!row) {
+    throw new HttpError(404, "User not found");
+  }
+
+  return row.display_name;
+};
+
+const setClassRsvp = async ({
+  classId,
+  userId,
+  rsvp,
+}: {
+  classId: string;
+  userId: string;
+  rsvp: RsvpStatus;
+}): Promise<RsvpStatus> => {
+  await ensureClassExists(classId);
+
+  const existing = await db
+    .selectFrom("signups")
+    .selectAll()
+    .where("class_id", "=", classId)
+    .where("user_id", "=", userId)
+    .executeTakeFirst();
+
+  if (existing) {
+    await db
+      .updateTable("signups")
+      .set({ rsvp, updated_at: new Date() })
+      .where("id", "=", existing.id)
+      .execute();
+  } else {
+    await db
+      .insertInto("signups")
+      .values({ class_id: classId, user_id: userId, rsvp })
+      .execute();
+  }
+
+  return existing ? rsvpStatusSchema.parse(existing.rsvp) : "none";
 };
 
 const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
@@ -397,29 +457,11 @@ const handlers: RouteHandlers = {
   },
 
   rsvp: async ({ params, body, user }) => {
-    const existing = await db
-      .selectFrom("signups")
-      .selectAll()
-      .where("class_id", "=", params.id)
-      .where("user_id", "=", user.uid)
-      .executeTakeFirst();
-
-    if (existing) {
-      await db
-        .updateTable("signups")
-        .set({ rsvp: body.rsvp, updated_at: new Date() })
-        .where("id", "=", existing.id)
-        .execute();
-    } else {
-      await db
-        .insertInto("signups")
-        .values({ class_id: params.id, user_id: user.uid, rsvp: body.rsvp })
-        .execute();
-    }
-
-    const previousRsvp = existing
-      ? rsvpStatusSchema.parse(existing.rsvp)
-      : "none";
+    const previousRsvp = await setClassRsvp({
+      classId: params.id,
+      userId: user.uid,
+      rsvp: body.rsvp,
+    });
     if (previousRsvp !== body.rsvp) {
       const userDisplayName = await getUserDisplayName(user.uid);
       await createSystemClassMessage({
@@ -428,6 +470,32 @@ const handlers: RouteHandlers = {
         text: `${userDisplayName} RSVPed ${body.rsvp}.`,
       });
     }
+    return { ok: true };
+  },
+
+  setUserRsvp: async ({ params, body, user }) => {
+    if (!canAssumeRole(user.role, "admin")) {
+      throw new HttpError(403, "Only admins can RSVP for others");
+    }
+
+    const [actorDisplayName, targetDisplayName] = await Promise.all([
+      getUserDisplayName(user.uid),
+      getRequiredUserDisplayName(params.userId),
+    ]);
+    const previousRsvp = await setClassRsvp({
+      classId: params.id,
+      userId: params.userId,
+      rsvp: body.rsvp,
+    });
+
+    if (previousRsvp !== body.rsvp) {
+      await createSystemClassMessage({
+        classId: params.id,
+        userId: user.uid,
+        text: `${actorDisplayName} set ${targetDisplayName}'s RSVP to ${body.rsvp}.`,
+      });
+    }
+
     return { ok: true };
   },
 
