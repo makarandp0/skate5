@@ -26,6 +26,7 @@ pnpm install              # Install all dependencies
 pnpm db:up                # Start Postgres via Docker
 pnpm db:create <name>     # Create a new TS migration file
 pnpm db:migrate           # Run pending migrations
+pnpm dev:branch           # Start/reuse one API + web server on branch-derived ports
 pnpm dev                  # Start all packages in dev mode
 pnpm dev:api              # Start API server only (port 3000)
 pnpm dev:web              # Start web dev server only (port 5173)
@@ -33,6 +34,12 @@ pnpm build                # Build all packages
 pnpm lint                 # Lint all packages (type-aware)
 pnpm typecheck            # Type-check all packages
 ```
+
+### Local dev servers
+
+- Prefer `pnpm dev:branch` when working locally. It derives stable API/web ports from the current git branch name, kills duplicate repo dev servers, and reuses the current branch's existing servers when healthy.
+- The script prints the exact API and web URLs. It also writes branch-scoped pids, logs, and `ports.json` under `.dev/<sanitized-branch>/`.
+- Plain `pnpm dev`, `pnpm dev:api`, and `pnpm dev:web` still use the default ports (`3000` and `5173`) and can conflict across branches or worktrees.
 
 ## Type Safety Rules
 

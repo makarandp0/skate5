@@ -54,6 +54,9 @@ const getAuthErrorMessage = (err: unknown): string => {
   }
 
   if (import.meta.env.DEV && code) return `Firebase Auth error: ${code}`;
+  if (import.meta.env.DEV && err instanceof Error) {
+    return `Sign-in failed after Firebase Auth: ${err.message}`;
+  }
 
   return "Something went wrong. Please try again.";
 };
@@ -137,7 +140,12 @@ export const Login = () => {
       }
       appendDebug("Firebase auth call resolved; waiting for profile redirect.");
     } catch (err) {
-      appendDebug(`Auth failed: ${getAuthErrorCode(err) ?? "unknown error"}.`);
+      appendDebug(
+        `Auth failed: ${
+          getAuthErrorCode(err) ??
+          (err instanceof Error ? err.message : "unknown error")
+        }.`
+      );
       setError(getAuthErrorMessage(err));
     } finally {
       setSubmitting(false);

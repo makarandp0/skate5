@@ -8,6 +8,7 @@
     "prod:up": "docker compose --profile production up -d --build",
     "prod:down": "docker compose --profile production down",
     "dev": "pnpm --filter @skate5/api --filter @skate5/web run dev",
+    "dev:branch": "node scripts/dev-branch.mjs",
     "dev:api": "pnpm --filter @skate5/api run dev",
     "dev:web": "pnpm --filter @skate5/web run dev",
     "build": "pnpm --filter './packages/*' run build",
