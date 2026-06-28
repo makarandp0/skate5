@@ -862,10 +862,7 @@ const handlers: RouteHandlers = {
 
   deleteClassGridEntry: async ({ params, user }) => {
     requireAdmin(user.role);
-    await requireClassGridEntry({
-      classId: params.id,
-      entryId: params.entryId,
-    });
+    await ensureClassExists(params.id);
 
     await db.transaction().execute(async (trx) => {
       await trx

@@ -51,9 +51,12 @@ export const createApiClient = (options: {
     client[name] = async (args: unknown) => {
       const a = args as Record<string, unknown> | undefined;
       const path = buildPath(route.path, a?.params as Record<string, string> | undefined);
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
+      const body =
+        a && "body" in a ? JSON.stringify(a.body) : undefined;
+      const headers: Record<string, string> = {};
+      if (body !== undefined) {
+        headers["Content-Type"] = "application/json";
+      }
 
       if (route.auth !== "none") {
         const token = await options.getToken();
@@ -69,7 +72,7 @@ export const createApiClient = (options: {
       const res = await fetch(`${options.baseUrl}${path}`, {
         method: route.method,
         headers,
-        body: a?.body ? JSON.stringify(a.body) : undefined,
+        body,
       });
       if (!res.ok) {
         throw new Error(`API error: ${String(res.status)} ${res.statusText}`);
