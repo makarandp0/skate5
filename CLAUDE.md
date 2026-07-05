@@ -122,6 +122,10 @@ railway logs              # View production logs
 railway status            # Check service health
 ```
 
+### GitHub CLI
+
+- `gh auth status` may fail in the sandbox because the GitHub token lives in the macOS keyring. If it fails with an invalid token but the user's terminal succeeds, rerun the check with escalated permissions instead of assuming GitHub auth is broken.
+
 ### Railway CLI
 ```bash
 railway link --project skate5 --service "skate5 app"   # Link to app service
