@@ -96,6 +96,7 @@ interface GridEntryRow {
 
 interface GridInstructorRow {
   user_id: string;
+  email: string | null;
   display_name: string;
   photo_url: string | null;
   rsvp: string | null;
@@ -186,6 +187,7 @@ export const toGridEntry = (row: GridEntryRow): GridEntry => {
 export const toGridInstructor = (row: GridInstructorRow): GridInstructor => {
   return gridInstructorSchema.parse({
     userId: row.user_id,
+    email: row.email,
     displayName: row.display_name,
     photoUrl: row.photo_url,
     rsvp: row.rsvp ?? "none",
