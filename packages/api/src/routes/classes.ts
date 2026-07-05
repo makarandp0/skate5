@@ -27,6 +27,7 @@ import {
   toChatMessage,
 } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
+import { sendEmail } from "../lib/email.js";
 
 const countSchema = z.coerce.number().int().nonnegative();
 
@@ -933,6 +934,16 @@ const handlers: RouteHandlers = {
     });
 
     return getClassGridResponse({ classId: params.id, canManage: true });
+  },
+
+  sendEmail: async ({ body, user }) => {
+    if (!canAssumeRole(user.role, "admin")) {
+      throw new HttpError(403, "Only admins can send email");
+    }
+
+    return sendEmail({
+      input: body,
+    });
   },
 };
 

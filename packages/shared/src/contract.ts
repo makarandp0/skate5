@@ -19,6 +19,8 @@ import {
   reorderGridEntriesSchema,
   publishGridSchema,
   firebaseClientConfigSchema,
+  sendEmailSchema,
+  sendEmailResponseSchema,
 } from "./schemas.js";
 
 export type RouteDefinition = {
@@ -161,6 +163,12 @@ export const contract = {
     params: z.object({ id: z.string() }),
     body: publishGridSchema,
     response: classGridResponseSchema,
+  },
+  sendEmail: {
+    method: "POST",
+    path: "/emails",
+    body: sendEmailSchema,
+    response: sendEmailResponseSchema,
   },
 } as const satisfies Record<string, RouteDefinition>;
 

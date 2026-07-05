@@ -184,3 +184,28 @@ export const publishGridSchema = z.object({
 export const sendMessageSchema = z.object({
   text: z.string().trim().min(1),
 });
+
+const emailAddressListSchema = z.array(z.email()).max(50);
+
+export const sendEmailSchema = z
+  .object({
+    to: emailAddressListSchema.min(1),
+    cc: emailAddressListSchema.default([]),
+    bcc: emailAddressListSchema.default([]),
+    subject: z.string().trim().min(1).max(200),
+    text: z.string().trim().max(50_000).optional(),
+    html: z.string().trim().max(100_000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.text && !value.html) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Provide a plain text or HTML body.",
+        path: ["text"],
+      });
+    }
+  });
+
+export const sendEmailResponseSchema = z.object({
+  id: z.string().min(1),
+});

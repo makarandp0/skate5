@@ -26,6 +26,8 @@ import {
   reorderGridEntriesSchema,
   publishGridSchema,
   sendMessageSchema,
+  sendEmailSchema,
+  sendEmailResponseSchema,
 } from "./schemas.js";
 
 export type UserRole = z.infer<typeof userRoleSchema>;
@@ -49,6 +51,7 @@ export type Chat = z.infer<typeof chatSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ClassChatResponse = z.infer<typeof classChatResponseSchema>;
 export type FirebaseClientConfig = z.infer<typeof firebaseClientConfigSchema>;
+export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type UpdateClassInput = z.infer<typeof updateClassSchema>;
@@ -59,3 +62,4 @@ export type UpdateGridEntryInput = z.infer<typeof updateGridEntrySchema>;
 export type ReorderGridEntriesInput = z.infer<typeof reorderGridEntriesSchema>;
 export type PublishGridInput = z.infer<typeof publishGridSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
+export type SendEmailInput = z.infer<typeof sendEmailSchema>;

@@ -9,6 +9,7 @@
     "prod:down": "docker compose --profile production down",
     "dev": "pnpm --filter @skate5/api --filter @skate5/web run dev",
     "dev:branch": "node scripts/dev-branch.mjs",
+    "dev:branch:restart": "node scripts/dev-branch.mjs --restart",
     "dev:api": "pnpm --filter @skate5/api run dev",
     "dev:web": "pnpm --filter @skate5/web run dev",
     "build": "pnpm --filter './packages/*' run build",

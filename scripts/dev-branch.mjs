@@ -6,6 +6,7 @@ import { spawn, spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const devRoot = path.join(repoRoot, ".dev");
+const restartRequested = process.argv.includes("--restart") || process.argv.includes("--force");
 
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
@@ -251,12 +252,15 @@ const main = async () => {
   const webPortPids = pidsOnPort(webPort);
   const rows = getProcessRows();
   // Keep any healthy process family that already owns this branch's ports, plus
-  // any previously recorded pid that is still alive.
-  const keepPids = relatedRepoPids(rows, [
-    ...apiPortPids,
-    ...webPortPids,
-    ...[recordedApiPid, recordedWebPid].filter((pid) => pid && isAlive(pid)),
-  ]);
+  // any previously recorded pid that is still alive. Restart mode deliberately
+  // keeps nothing so the current API/web processes are replaced.
+  const keepPids = restartRequested
+    ? new Set()
+    : relatedRepoPids(rows, [
+        ...apiPortPids,
+        ...webPortPids,
+        ...[recordedApiPid, recordedWebPid].filter((pid) => pid && isAlive(pid)),
+      ]);
 
   const duplicatePids = matchingRepoDevPids().filter((pid) => !keepPids.has(pid));
   const portConflictPids = [...apiPortPids, ...webPortPids].filter(
@@ -339,7 +343,7 @@ const main = async () => {
 
   const startedText =
     started.length > 0
-      ? `Started ${started.map((item) => `${item.name} pid ${String(item.pid)}`).join(", ")}.`
+      ? `${restartRequested ? "Restarted" : "Started"} ${started.map((item) => `${item.name} pid ${String(item.pid)}`).join(", ")}.`
       : "Reused existing branch dev servers.";
 
   console.log(startedText);
