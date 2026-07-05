@@ -1,4 +1,4 @@
-import { Calendar, Settings, User, type LucideIcon } from "lucide-react";
+import { Calendar, Mail, Settings, User, type LucideIcon } from "lucide-react";
 import { canAssumeRole, type UserRole } from "@skate5/shared";
 
 export type AppNavItem = {
@@ -24,6 +24,14 @@ export const appNavItems: AppNavItem[] = [
     label: "Profile",
     showInTopNav: true,
     showInBottomNav: true,
+  },
+  {
+    to: "/email",
+    icon: Mail,
+    label: "Email",
+    showInTopNav: true,
+    showInBottomNav: false,
+    minimumRole: "admin",
   },
   {
     to: "/config",

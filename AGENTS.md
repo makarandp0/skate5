@@ -27,6 +27,7 @@ pnpm db:up                # Start Postgres via Docker
 pnpm db:create <name>     # Create a new TS migration file
 pnpm db:migrate           # Run pending migrations
 pnpm dev:branch           # Start/reuse one API + web server on branch-derived ports
+pnpm dev:branch:restart   # Restart the branch-derived API + web servers
 pnpm dev                  # Start all packages in dev mode
 pnpm dev:api              # Start API server only (port 3000)
 pnpm dev:web              # Start web dev server only (port 5173)
@@ -38,6 +39,7 @@ pnpm typecheck            # Type-check all packages
 ### Local dev servers
 
 - Prefer `pnpm dev:branch` when working locally. It derives stable API/web ports from the current git branch name, kills duplicate repo dev servers, and reuses the current branch's existing servers when healthy.
+- Use `pnpm dev:branch:restart` after changing environment variables or server startup code.
 - The script prints the exact API and web URLs. It also writes branch-scoped pids, logs, and `ports.json` under `.dev/<sanitized-branch>/`.
 - Plain `pnpm dev`, `pnpm dev:api`, and `pnpm dev:web` still use the default ports (`3000` and `5173`) and can conflict across branches or worktrees.
 
@@ -96,6 +98,9 @@ pnpm typecheck            # Type-check all packages
 - `FIREBASE_CLIENT_API_KEY` - Web API key (from Firebase Console > Your Apps)
 - `FIREBASE_CLIENT_APP_ID` - Web app ID (from Firebase Console > Your Apps)
 - `FIREBASE_AUTH_DOMAIN` - Optional, defaults to `{projectId}.firebaseapp.com`
+- `RESEND_API_KEY` - Optional locally; required to send email through Resend
+- `RESEND_FROM_EMAIL` - Optional sender, defaults to `Skate5 <noreply@rivertrail-labs.com>`
+- `RESEND_REPLY_TO` - Optional reply-to override; defaults to `skate5-noreply@mail.rivertrail-labs.com`
 - `PORT` - Server port (default 3000)
 
 The frontend has no `.env` — it fetches Firebase config from `GET /api/config` at startup.
@@ -116,6 +121,10 @@ railway up --detach       # Manual deploy from local (bypasses git)
 railway logs              # View production logs
 railway status            # Check service health
 ```
+
+### GitHub CLI
+
+- `gh auth status` may fail in the sandbox because the GitHub token lives in the macOS keyring. If it fails with an invalid token but the user's terminal succeeds, rerun the check with escalated permissions instead of assuming GitHub auth is broken.
 
 ### Railway CLI
 ```bash

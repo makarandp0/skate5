@@ -50,6 +50,9 @@ const envSchema = z.object({
   FIREBASE_CLIENT_API_KEY: requiredNonEmptyStringSchema,
   FIREBASE_CLIENT_APP_ID: requiredNonEmptyStringSchema,
   FIREBASE_AUTH_DOMAIN: optionalNonEmptyStringSchema,
+  RESEND_API_KEY: optionalNonEmptyStringSchema,
+  RESEND_FROM_EMAIL: optionalNonEmptyStringSchema,
+  RESEND_REPLY_TO: optionalNonEmptyStringSchema,
   RAILWAY_GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   COMMIT_SHA: optionalNonEmptyStringSchema,
@@ -85,7 +88,7 @@ const parseEnv = (source: unknown): z.infer<typeof envSchema> => {
     "Required Railway variables: DATABASE_URL, FIREBASE_SERVICE_ACCOUNT_BASE64, FIREBASE_CLIENT_API_KEY, FIREBASE_CLIENT_APP_ID."
   );
   console.error(
-    "Optional variables may be omitted; empty FIREBASE_AUTH_DOMAIN and STATIC_PATH are treated as unset."
+    "Optional variables may be omitted; empty FIREBASE_AUTH_DOMAIN, STATIC_PATH, and Resend variables are treated as unset."
   );
   error.issues.forEach((issue) => {
     console.error(` - ${issue}`);
@@ -112,6 +115,9 @@ const diagnosticFields: ConfigDiagnosticField[] = [
   { key: "FIREBASE_CLIENT_API_KEY", sensitive: true },
   { key: "FIREBASE_CLIENT_APP_ID", sensitive: true },
   { key: "FIREBASE_AUTH_DOMAIN", sensitive: false },
+  { key: "RESEND_API_KEY", sensitive: true },
+  { key: "RESEND_FROM_EMAIL", sensitive: false },
+  { key: "RESEND_REPLY_TO", sensitive: false },
 ];
 
 export const config = {
@@ -125,6 +131,11 @@ export const config = {
     clientApiKey: env.FIREBASE_CLIENT_API_KEY,
     clientAppId: env.FIREBASE_CLIENT_APP_ID,
     authDomain: env.FIREBASE_AUTH_DOMAIN,
+  },
+  email: {
+    resendApiKey: env.RESEND_API_KEY,
+    fromEmail: env.RESEND_FROM_EMAIL ?? "Skate5 <noreply@rivertrail-labs.com>",
+    replyTo: env.RESEND_REPLY_TO ?? "skate5-noreply@mail.rivertrail-labs.com",
   },
   commitSha:
     env.RAILWAY_GIT_COMMIT_SHA ??
