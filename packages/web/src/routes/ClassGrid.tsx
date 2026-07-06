@@ -35,6 +35,7 @@ import { getClassDateKey } from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
+import { splitEmailList } from "../lib/email.js";
 import { cn } from "../lib/utils.js";
 import type {
   Badge,
@@ -45,13 +46,6 @@ import type {
 
 const adminActionClassName =
   "border-amber-300/80 bg-amber-50/80 text-amber-950 shadow-sm shadow-amber-900/5 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100";
-
-const splitEmailList = (value: string): string[] => {
-  return value
-    .split(/[\s,;]+/)
-    .map((email) => email.trim())
-    .filter((email) => email.length > 0);
-};
 
 const uniqueStrings = (values: string[]): string[] => {
   return [...new Set(values)];
@@ -584,19 +578,23 @@ const GridEmailDialog = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="grid-email-title"
-    >
-      <div className="max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
+      <div
+        className="max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="grid-email-title"
+        aria-describedby="grid-email-description"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
           <div>
             <h2 id="grid-email-title" className="text-lg font-bold">
               Send grid email
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p
+              id="grid-email-description"
+              className="text-sm text-muted-foreground"
+            >
               Review recipients, edit the message, then send the generated grid.
             </p>
           </div>

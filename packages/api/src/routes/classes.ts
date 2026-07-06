@@ -451,7 +451,7 @@ const getGridInstructors = async ({
     .selectFrom("users")
     .select([
       "users.id as user_id",
-      "users.email as email",
+      canManage ? "users.email as email" : sql<null>`NULL`.as("email"),
       "users.display_name as display_name",
       "users.photo_url as photo_url",
       "users.role as role",
@@ -471,7 +471,6 @@ const getGridInstructors = async ({
     .map((row) =>
       toGridInstructor({
         ...row,
-        email: canManage ? row.email : null,
         rsvp: latestRsvpByUser.get(row.user_id) ?? "none",
       })
     );
