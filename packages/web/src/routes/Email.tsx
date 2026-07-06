@@ -4,13 +4,7 @@ import { sendEmailSchema } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
-
-const splitEmailList = (value: string): string[] => {
-  return value
-    .split(/[\s,;]+/)
-    .map((email) => email.trim())
-    .filter((email) => email.length > 0);
-};
+import { splitEmailList } from "../lib/email.js";
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;

@@ -87,6 +87,7 @@ export const gridEntrySchema = z.object({
 
 export const gridInstructorSchema = z.object({
   userId: z.string(),
+  email: z.email().nullable(),
   displayName: z.string(),
   photoUrl: z.string().nullable(),
   rsvp: rsvpStatusSchema,

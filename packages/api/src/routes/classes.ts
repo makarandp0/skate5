@@ -451,6 +451,7 @@ const getGridInstructors = async ({
     .selectFrom("users")
     .select([
       "users.id as user_id",
+      canManage ? "users.email as email" : sql<null>`NULL`.as("email"),
       "users.display_name as display_name",
       "users.photo_url as photo_url",
       "users.role as role",

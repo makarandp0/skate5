@@ -10,9 +10,12 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  AlertCircle,
+  CheckCircle2,
   Copy,
   Grid3X3,
   LoaderCircle,
+  Mail,
   Pencil,
   Plus,
   Save,
@@ -23,6 +26,7 @@ import {
 import {
   canAssumeRole,
   createGridEntrySchema,
+  sendEmailSchema,
   updateGridEntrySchema,
 } from "@skate5/shared";
 import { api } from "../lib/api.js";
@@ -31,6 +35,7 @@ import { getClassDateKey } from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
+import { splitEmailList } from "../lib/email.js";
 import { cn } from "../lib/utils.js";
 import type {
   Badge,
@@ -41,6 +46,28 @@ import type {
 
 const adminActionClassName =
   "border-amber-300/80 bg-amber-50/80 text-amber-950 shadow-sm shadow-amber-900/5 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100";
+
+const uniqueStrings = (values: string[]): string[] => {
+  return [...new Set(values)];
+};
+
+const escapeHtml = (value: string): string => {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+};
+
+const textToHtmlParagraphs = (value: string): string => {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) =>
+      `<p style="margin:0 0 16px;">${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`
+    )
+    .join("");
+};
 
 const getDateLabel = (value: string): string => {
   const dateKey = getClassDateKey(value);
@@ -103,6 +130,140 @@ const InstructorChip = ({
       )}
     </span>
   );
+};
+
+const getBadgeLabel = (
+  entry: GridEntry,
+  badgeById: Map<string, Badge>
+): string => {
+  if (!entry.badgeId) return "No badge";
+  const badge = badgeById.get(entry.badgeId);
+  if (!badge) return "No badge";
+  return badge.group ? `${badge.group}: ${badge.text}` : badge.text;
+};
+
+const getInstructorNames = (
+  entry: GridEntry,
+  instructorById: Map<string, GridInstructor>
+): string[] => {
+  return entry.instructorIds.map(
+    (instructorId) =>
+      instructorById.get(instructorId)?.displayName ?? "Unknown instructor"
+  );
+};
+
+const getGridEmailRecipients = (
+  grid: ClassGridResponse,
+  instructorById: Map<string, GridInstructor>
+): string[] => {
+  const assignedInstructorIds = uniqueStrings(
+    grid.entries.flatMap((entry) => entry.instructorIds)
+  );
+
+  return uniqueStrings(
+    assignedInstructorIds
+      .map((instructorId) => instructorById.get(instructorId)?.email ?? "")
+      .filter((email) => email.length > 0)
+  );
+};
+
+const getDefaultGridEmailMessage = (grid: ClassGridResponse): string => {
+  return [
+    `Hello instructors! The grid is ready for ${getDateLabel(grid.class.date)}.`,
+    "If you need any adjustments, please contact the admin team.",
+  ].join("\n\n");
+};
+
+const buildGridEmailText = ({
+  grid,
+  message,
+  badgeById,
+  instructorById,
+  gridUrl,
+}: {
+  grid: ClassGridResponse;
+  message: string;
+  badgeById: Map<string, Badge>;
+  instructorById: Map<string, GridInstructor>;
+  gridUrl: string;
+}): string => {
+  const rows = grid.entries.map((entry) => {
+    const instructors = getInstructorNames(entry, instructorById).join(", ");
+    return [
+      entry.time ?? `Row ${String(entry.order + 1)}`,
+      getBadgeLabel(entry, badgeById),
+      entry.description ?? "No description",
+      instructors || "Unassigned",
+    ].join(" | ");
+  });
+
+  return [
+    message,
+    "",
+    `${grid.class.title} - ${getDateLabel(grid.class.date)}`,
+    "",
+    "Time | Badge | Description | Instructors",
+    ...rows,
+    "",
+    `View the grid in Skate5: ${gridUrl}`,
+  ].join("\n");
+};
+
+const buildGridEmailHtml = ({
+  grid,
+  message,
+  badgeById,
+  instructorById,
+  gridUrl,
+  generatedBy,
+}: {
+  grid: ClassGridResponse;
+  message: string;
+  badgeById: Map<string, Badge>;
+  instructorById: Map<string, GridInstructor>;
+  gridUrl: string;
+  generatedBy: string;
+}): string => {
+  const rows = grid.entries
+    .map((entry) => {
+      const instructors =
+        getInstructorNames(entry, instructorById).join(", ") || "Unassigned";
+      const description = entry.description ?? "No description";
+      const time = entry.time ?? `Row ${String(entry.order + 1)}`;
+
+      return `
+        <tr>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;font-weight:600;">${escapeHtml(time)}</td>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;">${escapeHtml(getBadgeLabel(entry, badgeById))}</td>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;white-space:pre-line;">${escapeHtml(description)}</td>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;">${escapeHtml(instructors)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div style="font-family:Arial,sans-serif;color:#18181b;line-height:1.5;">
+      <h1 style="margin:0 0 4px;font-size:24px;">${escapeHtml(grid.class.title)}</h1>
+      <p style="margin:0 0 20px;color:#52525b;">${escapeHtml(getDateLabel(grid.class.date))}</p>
+      ${textToHtmlParagraphs(message)}
+      <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;">
+        <thead>
+          <tr style="background:#f4f4f5;">
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Time</th>
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Badge</th>
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Description</th>
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Instructors</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="margin-top:20px;font-size:12px;color:#71717a;">
+        This message was generated by ${escapeHtml(generatedBy)}. For the latest assignments, view the
+        <a href="${escapeHtml(gridUrl)}" style="color:#2563eb;">grid in Skate5</a>.
+      </p>
+    </div>
+  `;
 };
 
 const GridEntryEditor = ({
@@ -318,6 +479,243 @@ const GridEntryEditor = ({
   );
 };
 
+const GridEmailDialog = ({
+  grid,
+  badgeById,
+  instructorById,
+  generatedBy,
+  onClose,
+}: {
+  grid: ClassGridResponse;
+  badgeById: Map<string, Badge>;
+  instructorById: Map<string, GridInstructor>;
+  generatedBy: string;
+  onClose: () => void;
+}) => {
+  const gridUrl = `${window.location.origin}/classes/${grid.class.id}/grid`;
+  const [recipients, setRecipients] = useState(
+    getGridEmailRecipients(grid, instructorById).join(", ")
+  );
+  const [subject, setSubject] = useState(
+    `Grid for ${getDateLabel(grid.class.date)}`
+  );
+  const [message, setMessage] = useState(getDefaultGridEmailMessage(grid));
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<string | null>(null);
+
+  const text = useMemo(
+    () =>
+      buildGridEmailText({
+        grid,
+        message,
+        badgeById,
+        instructorById,
+        gridUrl,
+      }),
+    [grid, message, badgeById, instructorById, gridUrl]
+  );
+
+  const html = useMemo(
+    () =>
+      buildGridEmailHtml({
+        grid,
+        message,
+        badgeById,
+        instructorById,
+        gridUrl,
+        generatedBy,
+      }),
+    [grid, message, badgeById, instructorById, gridUrl, generatedBy]
+  );
+
+  const parsedEmail = useMemo(() => {
+    return sendEmailSchema.safeParse({
+      to: splitEmailList(recipients),
+      subject,
+      text,
+      html,
+    });
+  }, [recipients, subject, text, html]);
+
+  const validationMessage = (() => {
+    if (parsedEmail.success) return null;
+    const firstIssue = parsedEmail.error.issues[0];
+    const firstPath = firstIssue.path[0];
+
+    if (firstPath === "to") {
+      return splitEmailList(recipients).length === 0
+        ? "Add at least one recipient email address."
+        : "Check recipient email addresses.";
+    }
+
+    if (firstPath === "subject") {
+      return "Add a subject.";
+    }
+
+    return firstIssue.message;
+  })();
+
+  const handleSend = async (): Promise<void> => {
+    setError(null);
+    setSentId(null);
+
+    if (!parsedEmail.success) {
+      setError(validationMessage);
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await api.sendEmail({ body: parsedEmail.data });
+      setSentId(response.id);
+    } catch (err) {
+      console.error("send grid email failed:", err);
+      setError("Could not send the grid email. Check configuration and try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
+      <div
+        className="max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="grid-email-title"
+        aria-describedby="grid-email-description"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+          <div>
+            <h2 id="grid-email-title" className="text-lg font-bold">
+              Send grid email
+            </h2>
+            <p
+              id="grid-email-description"
+              className="text-sm text-muted-foreground"
+            >
+              Review recipients, edit the message, then send the generated grid.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Close email preview"
+            onClick={onClose}
+            disabled={sending}
+          >
+            <X size={18} />
+          </Button>
+        </div>
+
+        <div className="grid max-h-[calc(95vh-140px)] gap-0 overflow-y-auto lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)]">
+          <div className="space-y-4 border-b border-border p-4 lg:border-b-0 lg:border-r">
+            {error && (
+              <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {sentId && (
+              <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                <p>Email sent. Resend id: {sentId}</p>
+              </div>
+            )}
+
+            <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              To
+              <textarea
+                value={recipients}
+                onChange={(event) => {
+                  setRecipients(event.currentTarget.value);
+                }}
+                rows={3}
+                className="resize-y rounded-md border border-border bg-background px-3 py-2 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+
+            <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              Subject
+              <input
+                value={subject}
+                onChange={(event) => {
+                  setSubject(event.currentTarget.value);
+                }}
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+
+            <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              Message
+              <textarea
+                value={message}
+                onChange={(event) => {
+                  setMessage(event.currentTarget.value);
+                }}
+                rows={9}
+                className="min-h-52 resize-y rounded-md border border-border bg-background px-3 py-2 text-sm normal-case leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+
+            {validationMessage && (
+              <p className="text-sm text-muted-foreground">
+                {validationMessage}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3 p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Preview
+              </p>
+              <p className="mt-1 text-sm font-medium">{subject}</p>
+            </div>
+            <div
+              className="overflow-x-auto rounded-md border border-border bg-white p-4 text-slate-950"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Recipients are prefilled from assigned grid instructors.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={sending}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleSend();
+              }}
+              disabled={sending}
+            >
+              {sending ? (
+                <LoaderCircle size={16} className="animate-spin" />
+              ) : (
+                <Mail size={16} />
+              )}
+              {sending ? "Sending..." : "Send grid"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ClassGrid = () => {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
@@ -327,6 +725,7 @@ export const ClassGrid = () => {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -572,10 +971,34 @@ export const ClassGrid = () => {
                 )}
                 {grid.class.gridPublished ? "Unpublish" : "Publish"}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEmailDialogOpen(true);
+                }}
+                disabled={savingAny || grid.entries.length === 0}
+                className={cn("border", adminActionClassName)}
+              >
+                <Mail size={16} />
+                Email grid
+              </Button>
             </div>
           )}
         </div>
       </section>
+
+      {canManage && emailDialogOpen && (
+        <GridEmailDialog
+          grid={grid}
+          badgeById={badgeById}
+          instructorById={instructorById}
+          generatedBy={profile?.displayName ?? "Skate5"}
+          onClose={() => {
+            setEmailDialogOpen(false);
+          }}
+        />
+      )}
 
       {error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
