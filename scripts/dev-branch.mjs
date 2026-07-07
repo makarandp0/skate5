@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -48,6 +49,18 @@ const derivePorts = (branchName) => {
     apiPort: 3300 + slot,
     webPort: 5300 + slot,
   };
+};
+
+const getLanAddress = () => {
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const address of addresses ?? []) {
+      if (address.family === "IPv4" && !address.internal) {
+        return address.address;
+      }
+    }
+  }
+
+  return null;
 };
 
 const getProcessRows = () => {
@@ -248,6 +261,9 @@ const main = async () => {
   const recordedWebPid = readPid(webPidPath);
   const apiUrl = `http://127.0.0.1:${String(apiPort)}`;
   const webUrl = `http://127.0.0.1:${String(webPort)}`;
+  const lanAddress = getLanAddress();
+  const apiLanUrl = lanAddress ? `http://${lanAddress}:${String(apiPort)}` : null;
+  const webLanUrl = lanAddress ? `http://${lanAddress}:${String(webPort)}` : null;
   const apiPortPids = pidsOnPort(apiPort);
   const webPortPids = pidsOnPort(webPort);
   const rows = getProcessRows();
@@ -310,7 +326,7 @@ const main = async () => {
           "packages/web",
           "dev",
           "--host",
-          "127.0.0.1",
+          "0.0.0.0",
           "--port",
           String(webPort),
         ],
@@ -338,7 +354,11 @@ const main = async () => {
 
   writeFileSync(
     path.join(branchDir, "ports.json"),
-    `${JSON.stringify({ branchName, apiPort, webPort, apiUrl, webUrl }, null, 2)}\n`
+    `${JSON.stringify(
+      { branchName, apiPort, webPort, apiUrl, webUrl, apiLanUrl, webLanUrl },
+      null,
+      2
+    )}\n`
   );
 
   const startedText =
@@ -349,7 +369,9 @@ const main = async () => {
   console.log(startedText);
   console.log(`Branch: ${branchName}`);
   console.log(`API: ${apiUrl}`);
+  if (apiLanUrl) console.log(`API (LAN): ${apiLanUrl}`);
   console.log(`Web: ${webUrl}`);
+  if (webLanUrl) console.log(`Web (LAN): ${webLanUrl}`);
   console.log(`Logs: ${branchDir}`);
 };
 

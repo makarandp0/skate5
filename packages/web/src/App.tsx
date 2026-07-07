@@ -8,7 +8,6 @@ import { BottomNav } from "./components/BottomNav.js";
 import { Login } from "./routes/Login.js";
 import { ClassList } from "./routes/ClassList.js";
 import { ClassCreate } from "./routes/ClassCreate.js";
-import { ClassDate } from "./routes/ClassDate.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
 import { ClassGrid } from "./routes/ClassGrid.js";
 import { ClassChat } from "./routes/ClassChat.js";
@@ -87,14 +86,6 @@ export const App = () => {
                   <RequireRole minimumRole="admin">
                     <ClassCreate />
                   </RequireRole>
-                }
-              />
-              <Route
-                path="/classes/date/:date"
-                element={
-                  <RequireAuth>
-                    <ClassDate />
-                  </RequireAuth>
                 }
               />
               <Route
