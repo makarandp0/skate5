@@ -7,6 +7,7 @@ import {
   canAssumeRole,
   userRoleSchema,
   type RsvpStatus,
+  type ClassListItem,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
   type ClassGridResponse,
@@ -165,6 +166,26 @@ const getCurrentUserRsvp = async (
     .executeTakeFirst();
 
   return row ? rsvpStatusSchema.parse(row.rsvp) : "none";
+};
+
+const getCurrentUserRsvpsByClass = async (
+  userId: string
+): Promise<Map<string, RsvpStatus>> => {
+  const rows = await db
+    .selectFrom("signups")
+    .select(["class_id", "rsvp"])
+    .where("user_id", "=", userId)
+    .orderBy("updated_at", "desc")
+    .execute();
+  const rsvpsByClass = new Map<string, RsvpStatus>();
+
+  for (const row of rows) {
+    if (!rsvpsByClass.has(row.class_id)) {
+      rsvpsByClass.set(row.class_id, rsvpStatusSchema.parse(row.rsvp));
+    }
+  }
+
+  return rsvpsByClass;
 };
 
 const ensureClassExists = async (classId: string): Promise<void> => {
@@ -643,9 +664,18 @@ const handlers: RouteHandlers = {
     return toUser(row, user.role);
   },
 
-  getClasses: async () => {
+  getClasses: async ({ user }) => {
     const rows = await db.selectFrom("classes").selectAll().orderBy("date", "asc").execute();
-    return rows.map(toSkateClass);
+    const rsvpsByClass = await getCurrentUserRsvpsByClass(user.uid);
+
+    return rows.map((row): ClassListItem => {
+      const skateClass = toSkateClass(row);
+
+      return {
+        ...skateClass,
+        currentUserRsvp: rsvpsByClass.get(skateClass.id) ?? "none",
+      };
+    });
   },
 
   getClass: async ({ params }) => {

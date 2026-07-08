@@ -1,5 +1,14 @@
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
 import { z } from "zod";
+
+const dotenvResult = loadDotenv();
+
+if (
+  process.env.NODE_ENV !== "production" &&
+  dotenvResult.parsed?.DATABASE_URL
+) {
+  process.env.DATABASE_URL = dotenvResult.parsed.DATABASE_URL;
+}
 
 const emptyStringToUndefined = (value: unknown): unknown =>
   value === "" ? undefined : value;

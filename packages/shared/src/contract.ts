@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   userSchema,
   skateClassSchema,
+  classListItemSchema,
   signupSchema,
   rsvpStatusSchema,
   classAttendanceResponseSchema,
@@ -47,7 +48,7 @@ export const contract = {
   getClasses: {
     method: "GET",
     path: "/classes",
-    response: z.array(skateClassSchema),
+    response: z.array(classListItemSchema),
   },
   getClass: {
     method: "GET",

@@ -48,15 +48,16 @@ export const ClassChat = () => {
   }
 
   const dateKey = getClassDateKey(skateClass.date);
+  const calendarUrl = `/?month=${dateKey.slice(0, 7)}`;
 
   return (
     <div className="space-y-3">
       <Link
-        to={`/classes/date/${dateKey}`}
+        to={calendarUrl}
         className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft size={16} />
-        Back
+        Calendar
       </Link>
 
       <ClassChatWindow skateClass={skateClass} />

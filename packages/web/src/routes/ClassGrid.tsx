@@ -892,6 +892,7 @@ export const ClassGrid = () => {
   }
 
   const backDateKey = getClassDateKey(grid.class.date);
+  const calendarUrl = `/?month=${backDateKey.slice(0, 7)}`;
   const savingAny = busyAction !== null;
   const showReadyNotice = !canManage && !grid.class.gridPublished;
 
@@ -1013,7 +1014,7 @@ export const ClassGrid = () => {
             Check back after the administrators publish assignments.
           </p>
           <Link
-            to={`/classes/date/${backDateKey}`}
+            to={calendarUrl}
             className="mt-4 inline-flex text-sm font-medium text-primary underline"
           >
             Back to schedule

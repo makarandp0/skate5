@@ -38,6 +38,10 @@ export const skateClassSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
+export const classListItemSchema = skateClassSchema.extend({
+  currentUserRsvp: rsvpStatusSchema,
+});
+
 export const signupSchema = z.object({
   id: z.string(),
   classId: z.string(),

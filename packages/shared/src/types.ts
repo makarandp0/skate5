@@ -6,6 +6,7 @@ import {
   chatMessageKindSchema,
   userSchema,
   skateClassSchema,
+  classListItemSchema,
   signupSchema,
   classAttendancePersonSchema,
   classAttendanceResponseSchema,
@@ -36,6 +37,7 @@ export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
 export type User = z.infer<typeof userSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
+export type ClassListItem = z.infer<typeof classListItemSchema>;
 export type Signup = z.infer<typeof signupSchema>;
 export type ClassAttendancePerson = z.infer<
   typeof classAttendancePersonSchema

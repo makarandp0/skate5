@@ -2,6 +2,7 @@ import { useMemo, useState, type SyntheticEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Calendar,
   Clock,
   LoaderCircle,
   Save,
@@ -20,6 +21,8 @@ const toDateKey = (date: Date): string => {
 
   return `${year}-${month}-${day}`;
 };
+
+const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
 
 const getDateParts = (
   dateKey: string
@@ -64,13 +67,18 @@ export const ClassCreate = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialDate = searchParams.get("date") ?? toDateKey(new Date());
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ClassStatus>("draft");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dateParts = useMemo(() => getDateParts(initialDate), [initialDate]);
+  const dateParts = useMemo(() => getDateParts(selectedDate), [selectedDate]);
+  const backDate = dateKeyPattern.test(selectedDate)
+    ? selectedDate
+    : toDateKey(new Date());
+  const calendarUrl = `/?month=${backDate.slice(0, 7)}`;
 
   const saveClass = async (): Promise<void> => {
     setSaving(true);
@@ -79,7 +87,7 @@ export const ClassCreate = () => {
     try {
       const body = createClassSchema.parse({
         title: title.trim(),
-        date: initialDate,
+        date: selectedDate,
         time: time.trim() || undefined,
         description: description.trim() || undefined,
         status: classStatusSchema.parse(status),
@@ -101,11 +109,11 @@ export const ClassCreate = () => {
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <Link
-        to={`/classes/date/${initialDate}`}
+        to={calendarUrl}
         className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft size={16} />
-        Date
+        Calendar
       </Link>
 
       <section className="rounded-lg border border-border/80 bg-background/80 p-4 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-5">
@@ -159,6 +167,22 @@ export const ClassCreate = () => {
 
             <div className="mt-3 flex max-w-44 text-sm font-medium text-muted-foreground">
               <label className="flex min-w-0 items-center gap-1.5">
+                <Calendar size={14} />
+                <span className="sr-only">Date</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(event) => {
+                    setSelectedDate(event.target.value);
+                  }}
+                  required
+                  className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 flex max-w-44 text-sm font-medium text-muted-foreground">
+              <label className="flex min-w-0 items-center gap-1.5">
                 <Clock size={14} />
                 <span className="sr-only">Time</span>
                 <input
@@ -200,7 +224,7 @@ export const ClassCreate = () => {
           type="button"
           variant="outline"
           onClick={() => {
-            void navigate(`/classes/date/${initialDate}`);
+            void navigate(calendarUrl);
           }}
           disabled={saving}
         >
