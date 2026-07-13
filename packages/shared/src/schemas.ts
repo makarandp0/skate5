@@ -7,6 +7,12 @@ export const userRoleSchema = z.enum([
   "member",
 ]);
 
+export const manageableUserRoleSchema = z.enum([
+  "admin",
+  "instructor",
+  "member",
+]);
+
 export const rsvpStatusSchema = z.enum(["yes", "no", "maybe", "none"]);
 
 export const classStatusSchema = z.enum(["draft", "published", "cancelled"]);
@@ -21,6 +27,18 @@ export const userSchema = z.object({
   photoUrl: z.string().nullable(),
   role: userRoleSchema,
   actualRole: userRoleSchema,
+  lastLoginAt: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export const managedUserSchema = z.object({
+  id: z.string(),
+  email: z.email(),
+  displayName: z.string(),
+  photoUrl: z.string().nullable(),
+  role: userRoleSchema,
+  lastLoginAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -150,6 +168,10 @@ export const updateClassSchema = z.object({
   description: z.string().optional(),
   time: z.string().optional(),
   status: classStatusSchema.default("draft"),
+});
+
+export const updateUserRoleSchema = z.object({
+  role: manageableUserRoleSchema,
 });
 
 export const rsvpRequestSchema = z.object({
