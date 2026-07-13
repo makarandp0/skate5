@@ -1,10 +1,12 @@
 import { z } from "zod";
 import {
   userRoleSchema,
+  manageableUserRoleSchema,
   rsvpStatusSchema,
   classStatusSchema,
   chatMessageKindSchema,
   userSchema,
+  managedUserSchema,
   skateClassSchema,
   classListItemSchema,
   signupSchema,
@@ -20,6 +22,7 @@ import {
   firebaseClientConfigSchema,
   createClassSchema,
   updateClassSchema,
+  updateUserRoleSchema,
   rsvpRequestSchema,
   createBadgeSchema,
   createGridEntrySchema,
@@ -32,10 +35,12 @@ import {
 } from "./schemas.js";
 
 export type UserRole = z.infer<typeof userRoleSchema>;
+export type ManageableUserRole = z.infer<typeof manageableUserRoleSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
 export type User = z.infer<typeof userSchema>;
+export type ManagedUser = z.infer<typeof managedUserSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
 export type ClassListItem = z.infer<typeof classListItemSchema>;
 export type Signup = z.infer<typeof signupSchema>;
@@ -57,6 +62,7 @@ export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type UpdateClassInput = z.infer<typeof updateClassSchema>;
+export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
 export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
 export type CreateBadgeInput = z.infer<typeof createBadgeSchema>;
 export type CreateGridEntryInput = z.infer<typeof createGridEntrySchema>;

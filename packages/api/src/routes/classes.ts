@@ -7,7 +7,9 @@ import {
   canAssumeRole,
   userRoleSchema,
   type RsvpStatus,
+  type UserRole,
   type ClassListItem,
+  type ManagedUser,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
   type ClassGridResponse,
@@ -18,6 +20,7 @@ import {
 import { db } from "../db/index.js";
 import {
   toUser,
+  toManagedUser,
   toSkateClass,
   toSignup,
   toClassAttendancePerson,
@@ -390,6 +393,23 @@ const requireAdmin = (role: Parameters<typeof canAssumeRole>[0]): void => {
   }
 };
 
+const requireAdminAccess = (role: UserRole, message: string): void => {
+  if (!canAssumeRole(role, "admin")) {
+    throw new HttpError(403, message);
+  }
+};
+
+const getManagedUsers = async (): Promise<ManagedUser[]> => {
+  const rows = await db
+    .selectFrom("users")
+    .selectAll()
+    .orderBy("display_name", "asc")
+    .orderBy("email", "asc")
+    .execute();
+
+  return rows.map(toManagedUser);
+};
+
 const toDateKey = (value: string): string | null => {
   const dateOnly = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
   if (dateOnly) return dateOnly;
@@ -662,6 +682,46 @@ const handlers: RouteHandlers = {
       .where("id", "=", user.uid)
       .executeTakeFirstOrThrow();
     return toUser(row, user.role);
+  },
+
+  getUsers: async ({ user }) => {
+    requireAdminAccess(user.role, "Only admins can manage users");
+    return getManagedUsers();
+  },
+
+  updateUserRole: async ({ params, body, user }) => {
+    requireAdminAccess(user.role, "Only admins can manage users");
+
+    if (params.id === user.uid) {
+      throw new HttpError(400, "Admins cannot change their own role");
+    }
+
+    const current = await db
+      .selectFrom("users")
+      .select(["role"])
+      .where("id", "=", params.id)
+      .executeTakeFirst();
+
+    if (!current) {
+      throw new HttpError(404, "User not found");
+    }
+
+    const currentRole = userRoleSchema.parse(current.role);
+    if (currentRole === "developer") {
+      throw new HttpError(403, "Developer roles cannot be changed here");
+    }
+
+    const row = await db
+      .updateTable("users")
+      .set({
+        role: body.role,
+        updated_at: new Date(),
+      })
+      .where("id", "=", params.id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return toManagedUser(row);
   },
 
   getClasses: async ({ user }) => {

@@ -13,6 +13,7 @@ import { ClassGrid } from "./routes/ClassGrid.js";
 import { ClassChat } from "./routes/ClassChat.js";
 import { Profile } from "./routes/Profile.js";
 import { Email } from "./routes/Email.js";
+import { Users } from "./routes/Users.js";
 import { Config } from "./routes/Config.js";
 import type { ReactNode } from "react";
 
@@ -125,6 +126,14 @@ export const App = () => {
                 element={
                   <RequireRole minimumRole="admin">
                     <Email />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <RequireRole minimumRole="admin">
+                    <Users />
                   </RequireRole>
                 }
               />

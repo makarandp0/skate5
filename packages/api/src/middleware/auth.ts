@@ -36,9 +36,10 @@ export const authenticate = async (
     return reply.status(401).send({ error: "Invalid token" });
   }
 
+  const tokenAuthTime = new Date(decoded.auth_time * 1000);
   let row = await db
     .selectFrom("users")
-    .select(["id", "email", "role"])
+    .select(["id", "email", "role", "last_login_at"])
     .where("firebase_uid", "=", decoded.uid)
     .executeTakeFirst();
 
@@ -58,9 +59,21 @@ export const authenticate = async (
         display_name: displayName,
         photo_url: photoUrl,
         role: "member",
+        last_login_at: tokenAuthTime,
       })
-      .returning(["id", "email", "role"])
+      .returning(["id", "email", "role", "last_login_at"])
       .executeTakeFirstOrThrow();
+  } else if (!row.last_login_at || row.last_login_at < tokenAuthTime) {
+    await db
+      .updateTable("users")
+      .set({ last_login_at: tokenAuthTime })
+      .where("id", "=", row.id)
+      .execute();
+
+    row = {
+      ...row,
+      last_login_at: tokenAuthTime,
+    };
   }
 
   const actualRole = userRoleSchema.parse(row.role);

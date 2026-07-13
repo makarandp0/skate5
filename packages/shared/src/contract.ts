@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   userSchema,
+  managedUserSchema,
   skateClassSchema,
   classListItemSchema,
   signupSchema,
@@ -12,6 +13,7 @@ import {
   classGridResponseSchema,
   createClassSchema,
   updateClassSchema,
+  updateUserRoleSchema,
   rsvpRequestSchema,
   sendMessageSchema,
   createBadgeSchema,
@@ -44,6 +46,18 @@ export const contract = {
     method: "GET",
     path: "/me",
     response: userSchema,
+  },
+  getUsers: {
+    method: "GET",
+    path: "/users",
+    response: z.array(managedUserSchema),
+  },
+  updateUserRole: {
+    method: "PUT",
+    path: "/users/:id/role",
+    params: z.object({ id: z.string() }),
+    body: updateUserRoleSchema,
+    response: managedUserSchema,
   },
   getClasses: {
     method: "GET",

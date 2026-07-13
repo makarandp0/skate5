@@ -3,8 +3,10 @@ import {
   chatMessageKindSchema,
   gridEntrySchema,
   gridInstructorSchema,
+  managedUserSchema,
   userRoleSchema,
   type User,
+  type ManagedUser,
   type UserRole,
   type SkateClass,
   type Signup,
@@ -23,6 +25,7 @@ interface UserRow {
   display_name: string;
   photo_url: string | null;
   role: string;
+  last_login_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -42,9 +45,23 @@ export const toUser = (row: UserRow, effectiveRole?: UserRole): User => {
     photoUrl: row.photo_url,
     role: effectiveRole ?? actualRole,
     actualRole,
+    lastLoginAt: row.last_login_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
+};
+
+export const toManagedUser = (row: UserRow): ManagedUser => {
+  return managedUserSchema.parse({
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    photoUrl: row.photo_url,
+    role: assertUserRole(row.role),
+    lastLoginAt: row.last_login_at?.toISOString() ?? null,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  });
 };
 
 interface ClassRow {

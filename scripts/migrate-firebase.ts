@@ -7,7 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
 import { z } from "zod";
-import { Kysely, PostgresDialect } from "kysely";
+import { Kysely, PostgresDialect, sql } from "kysely";
 import pg from "pg";
 import type { Database } from "../packages/api/src/db/types.js";
 
@@ -20,10 +20,26 @@ if (!process.env.DATABASE_URL) {
 
 // --- Zod schemas for Firebase export ---
 
+const firebaseTimestampSchema = z.union([z.string(), z.number()]).nullable().optional();
+
 const firebaseUserSchema = z.object({
   displayName: z.string().nullable().optional(),
   photoURL: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
+  createdAt: firebaseTimestampSchema,
+  created_at: firebaseTimestampSchema,
+  creationTime: firebaseTimestampSchema,
+  createdAtTimestamp: firebaseTimestampSchema,
+  lastLoginAt: firebaseTimestampSchema,
+  lastSignInTime: firebaseTimestampSchema,
+  lastSignInTimestamp: firebaseTimestampSchema,
+  last_login_at: firebaseTimestampSchema,
+  metadata: z
+    .object({
+      creationTime: firebaseTimestampSchema,
+      lastSignInTime: firebaseTimestampSchema,
+    })
+    .optional(),
   provider: z.string().optional(),
   uid: z.string(),
   role: z.enum(["admin", "instructor"]).optional(),
@@ -71,6 +87,31 @@ const firebaseExportSchema = z.object({
   grids: z.record(z.string(), z.record(z.string(), firebaseGridEntrySchema)).optional().default({}),
 });
 
+const firebaseAuthExportUserSchema = z.object({
+  localId: z.string(),
+  email: z.string().nullable().optional(),
+  createdAt: firebaseTimestampSchema,
+  lastSignedInAt: firebaseTimestampSchema,
+});
+
+const firebaseAuthExportSchema = z.union([
+  z.object({
+    users: z.array(firebaseAuthExportUserSchema).optional().default([]),
+  }),
+  z.array(firebaseAuthExportUserSchema),
+]);
+
+type FirebaseTimestamp = z.infer<typeof firebaseTimestampSchema>;
+type FirebaseUser = z.infer<typeof firebaseUserSchema>;
+type FirebaseAuthExportUser = z.infer<typeof firebaseAuthExportUserSchema>;
+
+type AuthUserMetadata = {
+  uid: string;
+  email: string | null;
+  createdAt: Date | null;
+  lastLoginAt: Date | null;
+};
+
 // --- Helpers ---
 
 function maskConnectionString(url: string): string {
@@ -101,14 +142,110 @@ function getInstructorArray(instructors: Record<string, string> | string[] | und
   return Object.values(instructors);
 }
 
+function getAuthExportCreatedAt(user: FirebaseAuthExportUser): Date | null {
+  return parseFirebaseTimestamp(user.createdAt);
+}
+
+function getAuthExportLastLoginAt(user: FirebaseAuthExportUser): Date | null {
+  return parseFirebaseTimestamp(user.lastSignedInAt);
+}
+
+function parseAuthUsersJson(rawJson: string): Map<string, AuthUserMetadata> {
+  const parsed: unknown = JSON.parse(rawJson);
+  const data = firebaseAuthExportSchema.parse(parsed);
+  const users = Array.isArray(data) ? data : data.users;
+  const usersByUid = new Map<string, AuthUserMetadata>();
+
+  for (const user of users) {
+    usersByUid.set(user.localId, {
+      uid: user.localId,
+      email: user.email ?? null,
+      createdAt: getAuthExportCreatedAt(user),
+      lastLoginAt: getAuthExportLastLoginAt(user),
+    });
+  }
+
+  return usersByUid;
+}
+
+function parseFirebaseTimestamp(value: FirebaseTimestamp): Date | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number") {
+    const millis = Math.abs(value) < 10_000_000_000 ? value * 1000 : value;
+    const date = new Date(millis);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (/^\d+$/.test(trimmed)) {
+    return parseFirebaseTimestamp(Number(trimmed));
+  }
+
+  const millis = Date.parse(trimmed);
+  if (Number.isNaN(millis)) return null;
+  return new Date(millis);
+}
+
+function getUserLastLoginAt(user: FirebaseUser): Date | null {
+  const candidates: FirebaseTimestamp[] = [
+    user.lastLoginAt,
+    user.last_login_at,
+    user.lastSignInTime,
+    user.lastSignInTimestamp,
+    user.metadata?.lastSignInTime,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseFirebaseTimestamp(candidate);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
+function getUserCreatedAt(user: FirebaseUser): Date | null {
+  const candidates: FirebaseTimestamp[] = [
+    user.createdAt,
+    user.created_at,
+    user.creationTime,
+    user.createdAtTimestamp,
+    user.metadata?.creationTime,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseFirebaseTimestamp(candidate);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
 // --- Main ---
 
 const args = process.argv.slice(2);
 const jsonPath = args.find((a) => !a.startsWith("--"));
+const authUsersJsonFlagIndex = args.findIndex(
+  (a) => a === "--auth-users-json"
+);
+const authUsersJsonEqualsArg = args.find((a) =>
+  a.startsWith("--auth-users-json=")
+);
+const authUsersJsonPath =
+  authUsersJsonEqualsArg?.slice("--auth-users-json=".length) ??
+  (authUsersJsonFlagIndex >= 0
+    ? args[authUsersJsonFlagIndex + 1]
+    : undefined);
 const forceFlag = args.includes("--force");
 
 if (!jsonPath) {
-  console.error("Usage: tsx scripts/migrate-firebase.ts <path-to-export.json> [--force]");
+  // Firebase Auth sidecar JSON:
+  // firebase auth:export /tmp/skate1-auth-users.json --format=json --project skate1-test
+  console.error(
+    "Usage: tsx scripts/migrate-firebase.ts <path-to-rtdb-export.json> [--auth-users-json <path-to-auth-users.json>] [--force]"
+  );
   process.exit(1);
 }
 
@@ -127,13 +264,20 @@ console.log(`Reading ${jsonPath}...`);
 const rawJson = await readFile(path.resolve(jsonPath), "utf-8");
 const parsed: unknown = JSON.parse(rawJson);
 const data = firebaseExportSchema.parse(parsed);
+const authUsersByUid = authUsersJsonPath
+  ? parseAuthUsersJson(await readFile(path.resolve(authUsersJsonPath), "utf-8"))
+  : new Map<string, AuthUserMetadata>();
 
 // Count entities
 const userEntries = Object.entries(data.users);
 const badgeEntries = Object.entries(data.badges);
 const classEntries = Object.entries(data.classes);
 const signupEntries = Object.entries(data.signups).flatMap(([classId, users]) =>
-  Object.entries(users).map(([userId, signup]) => ({ classId, userId, ...signup }))
+  Object.entries(users).map(([userId, signup]) => ({
+    ...signup,
+    classId,
+    userId,
+  }))
 );
 const gridEntries = Object.entries(data.grids)
   .filter(([classId]) => classId !== "undefined")
@@ -151,6 +295,9 @@ console.log(`  Badges:       ${String(badgeEntries.length)}`);
 console.log(`  Classes:      ${String(classEntries.length)}`);
 console.log(`  Signups:      ${String(signupEntries.length)}`);
 console.log(`  Grid entries: ${String(gridEntries.length)}`);
+if (authUsersJsonPath) {
+  console.log(`  Auth users:   ${String(authUsersByUid.size)} from ${authUsersJsonPath}`);
+}
 if (forceFlag) {
   console.log(`\n  ⚠️  --force: existing data will be DELETED before import`);
 }
@@ -191,6 +338,9 @@ await db.transaction().execute(async (trx) => {
   const uidMap = new Map<string, string>();
 
   for (const [firebaseUid, user] of userEntries) {
+    const authUser = authUsersByUid.get(firebaseUid);
+    const createdAt = authUser?.createdAt ?? getUserCreatedAt(user);
+    const lastLoginAt = authUser?.lastLoginAt ?? getUserLastLoginAt(user);
     const result = await trx
       .insertInto("users")
       .values({
@@ -199,6 +349,13 @@ await db.transaction().execute(async (trx) => {
         display_name: user.displayName ?? "Unknown",
         photo_url: user.photoURL ?? null,
         role: user.role ?? "member",
+        last_login_at: lastLoginAt,
+        ...(createdAt
+          ? {
+              created_at: createdAt,
+              updated_at: createdAt,
+            }
+          : {}),
       })
       .returning(["id"])
       .executeTakeFirstOrThrow();
@@ -316,7 +473,7 @@ await db.transaction().execute(async (trx) => {
         badge_id: badgeId,
         time: entry.time ?? null,
         description: entry.description ?? null,
-        instructor_ids: JSON.stringify(instructorIds),
+        instructor_ids: sql<string[]>`${JSON.stringify(instructorIds)}::jsonb`,
       })
       .execute();
   }
