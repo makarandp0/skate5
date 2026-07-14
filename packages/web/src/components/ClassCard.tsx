@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, Clock } from "lucide-react";
+import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
 import { CalendarDateTile } from "./CalendarDateTile.js";
 import { Card } from "./ui/Card.js";
 import { cn } from "../lib/utils.js";
-import type { SkateClass } from "@skate5/shared";
+import type { Location, SkateClass } from "@skate5/shared";
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}/;
 
@@ -78,6 +78,29 @@ export const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
   );
 };
 
+export const LocationBadge = ({
+  location,
+  showAddress = false,
+}: {
+  location: Location;
+  showAddress?: boolean;
+}) => {
+  return (
+    <span
+      className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 text-xs font-semibold text-foreground"
+      title={showAddress ? location.address : undefined}
+    >
+      <MapPin size={13} style={{ color: location.color }} />
+      <span className="truncate">{location.name}</span>
+      {showAddress && (
+        <span className="hidden truncate text-muted-foreground sm:inline">
+          {location.address}
+        </span>
+      )}
+    </span>
+  );
+};
+
 export const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
   const dateParts = getClassDateParts(skateClass.date);
 
@@ -116,6 +139,7 @@ export const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
                 {skateClass.time}
               </span>
             )}
+            <LocationBadge location={skateClass.location} />
             <span className="ml-auto hidden items-center gap-1 text-primary opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
               Open
               <ArrowRight size={13} />

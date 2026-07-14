@@ -4,10 +4,12 @@ import {
   gridEntrySchema,
   gridInstructorSchema,
   managedUserSchema,
+  locationSchema,
   userRoleSchema,
   type User,
   type ManagedUser,
   type UserRole,
+  type Location,
   type SkateClass,
   type Signup,
   type ClassAttendancePerson,
@@ -70,11 +72,26 @@ interface ClassRow {
   description: string | null;
   date: string;
   time: string | null;
+  location_slug: string;
+  location_name: string;
+  location_address: string;
+  location_color: string;
+  location_active: boolean;
+  location_sort_order: number;
   status: string;
   grid_published: boolean;
   created_by: string;
   created_at: Date;
   updated_at: Date;
+}
+
+interface LocationRow {
+  slug: string;
+  name: string;
+  address: string;
+  color: string;
+  active: boolean;
+  sort_order: number;
 }
 
 interface SignupRow {
@@ -147,6 +164,17 @@ const assertRsvpStatus = (s: string): Signup["rsvp"] => {
   throw new Error(`Invalid rsvp status: ${s}`);
 };
 
+export const toLocation = (row: LocationRow): Location => {
+  return locationSchema.parse({
+    slug: row.slug,
+    name: row.name,
+    address: row.address,
+    color: row.color,
+    active: row.active,
+    sortOrder: row.sort_order,
+  });
+};
+
 export const toSkateClass = (row: ClassRow): SkateClass => {
   return {
     id: row.id,
@@ -154,6 +182,15 @@ export const toSkateClass = (row: ClassRow): SkateClass => {
     description: row.description,
     date: row.date,
     time: row.time,
+    locationSlug: row.location_slug,
+    location: toLocation({
+      slug: row.location_slug,
+      name: row.location_name,
+      address: row.location_address,
+      color: row.location_color,
+      active: row.location_active,
+      sort_order: row.location_sort_order,
+    }),
     status: assertClassStatus(row.status),
     gridPublished: row.grid_published,
     createdBy: row.created_by,

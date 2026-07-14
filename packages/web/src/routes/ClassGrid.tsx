@@ -31,7 +31,7 @@ import {
 } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { getClassDateKey } from "../components/ClassCard.js";
+import { getClassDateKey, LocationBadge } from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
@@ -169,7 +169,7 @@ const getGridEmailRecipients = (
 
 const getDefaultGridEmailMessage = (grid: ClassGridResponse): string => {
   return [
-    `Hello instructors! The grid is ready for ${getDateLabel(grid.class.date)}.`,
+    `Hello instructors! The grid is ready for ${getDateLabel(grid.class.date)} at ${grid.class.location.name}.`,
     "If you need any adjustments, please contact the admin team.",
   ].join("\n\n");
 };
@@ -201,6 +201,7 @@ const buildGridEmailText = ({
     message,
     "",
     `${grid.class.title} - ${getDateLabel(grid.class.date)}`,
+    `Location: ${grid.class.location.name} (${grid.class.location.address})`,
     "",
     "Time | Badge | Description | Instructors",
     ...rows,
@@ -245,7 +246,8 @@ const buildGridEmailHtml = ({
   return `
     <div style="font-family:Arial,sans-serif;color:#18181b;line-height:1.5;">
       <h1 style="margin:0 0 4px;font-size:24px;">${escapeHtml(grid.class.title)}</h1>
-      <p style="margin:0 0 20px;color:#52525b;">${escapeHtml(getDateLabel(grid.class.date))}</p>
+      <p style="margin:0;color:#52525b;">${escapeHtml(getDateLabel(grid.class.date))}</p>
+      <p style="margin:0 0 20px;color:#52525b;">${escapeHtml(grid.class.location.name)} - ${escapeHtml(grid.class.location.address)}</p>
       ${textToHtmlParagraphs(message)}
       <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;">
         <thead>
@@ -919,6 +921,9 @@ export const ClassGrid = () => {
             <p className="mt-1 text-sm text-muted-foreground">
               {getDateLabel(grid.class.date)}
             </p>
+            <div className="mt-3">
+              <LocationBadge location={grid.class.location} showAddress />
+            </div>
           </div>
 
           {canManage && (

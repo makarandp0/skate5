@@ -12,6 +12,7 @@ import pg from "pg";
 import type { Database } from "../packages/api/src/db/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const defaultLocationSlug = "lynnwood-bowl-and-skate";
 
 // Load .env from packages/api/.env unless DATABASE_URL is already set
 if (!process.env.DATABASE_URL) {
@@ -333,6 +334,47 @@ await db.transaction().execute(async (trx) => {
     await trx.deleteFrom("users").execute();
   }
 
+  const defaultLocation = await trx
+    .insertInto("locations")
+    .values({
+      slug: defaultLocationSlug,
+      name: "Lynnwood Bowl and Skate",
+      address: "6210 200th St SW, Lynnwood, WA 98036",
+      color: "#2563eb",
+      sort_order: 0,
+    })
+    .onConflict((oc) =>
+      oc.column("slug").doUpdateSet({
+        name: "Lynnwood Bowl and Skate",
+        address: "6210 200th St SW, Lynnwood, WA 98036",
+        color: "#2563eb",
+        active: true,
+        sort_order: 0,
+      })
+    )
+    .returning(["slug"])
+    .executeTakeFirstOrThrow();
+
+  await trx
+    .insertInto("locations")
+    .values({
+      slug: "rock-and-roll-rink-issaquah",
+      name: "Rock and Roll Rink - Issaquah",
+      address: "5700 E Lake Sammamish Pkwy SE, Issaquah, WA 98029",
+      color: "#16a34a",
+      sort_order: 1,
+    })
+    .onConflict((oc) =>
+      oc.column("slug").doUpdateSet({
+        name: "Rock and Roll Rink - Issaquah",
+        address: "5700 E Lake Sammamish Pkwy SE, Issaquah, WA 98029",
+        color: "#16a34a",
+        active: true,
+        sort_order: 1,
+      })
+    )
+    .execute();
+
   // Phase 1: Users
   console.log(`Inserting ${String(userEntries.length)} users...`);
   const uidMap = new Map<string, string>();
@@ -407,6 +449,7 @@ await db.transaction().execute(async (trx) => {
         description: cls.description ?? null,
         date: cls.date,
         time: cls.time ?? null,
+        location_slug: defaultLocation.slug,
         status,
         grid_published: cls.gridPublished ?? false,
         created_by: createdBy,
