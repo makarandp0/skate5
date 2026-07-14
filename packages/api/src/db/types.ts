@@ -2,6 +2,7 @@ import { Generated } from "kysely";
 
 export interface Database {
   users: UsersTable;
+  locations: LocationsTable;
   classes: ClassesTable;
   signups: SignupsTable;
   badges: BadgesTable;
@@ -23,12 +24,22 @@ export interface UsersTable {
   updated_at: Generated<Date>;
 }
 
+export interface LocationsTable {
+  slug: string;
+  name: string;
+  address: string;
+  color: string;
+  active: Generated<boolean>;
+  sort_order: Generated<number>;
+}
+
 export interface ClassesTable {
   id: Generated<string>;
   title: string;
   description: string | null;
   date: string;
   time: string | null;
+  location_slug: string;
   status: string;
   grid_published: Generated<boolean>;
   created_by: string;

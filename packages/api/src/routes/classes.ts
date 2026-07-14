@@ -8,7 +8,9 @@ import {
   userRoleSchema,
   type RsvpStatus,
   type UserRole,
+  type SkateClass,
   type ClassListItem,
+  type Location,
   type ManagedUser,
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
@@ -22,6 +24,7 @@ import {
   toUser,
   toManagedUser,
   toSkateClass,
+  toLocation,
   toSignup,
   toClassAttendancePerson,
   toBadge,
@@ -201,6 +204,70 @@ const ensureClassExists = async (classId: string): Promise<void> => {
   if (!row) {
     throw new HttpError(404, "Class not found");
   }
+};
+
+const getLocations = async ({
+  activeOnly,
+}: {
+  activeOnly: boolean;
+}): Promise<Location[]> => {
+  let query = db
+    .selectFrom("locations")
+    .selectAll()
+    .orderBy("sort_order", "asc")
+    .orderBy("name", "asc");
+
+  if (activeOnly) {
+    query = query.where("active", "=", true);
+  }
+
+  const rows = await query.execute();
+  return rows.map(toLocation);
+};
+
+const ensureActiveLocationExists = async (
+  locationSlug: string
+): Promise<void> => {
+  const row = await db
+    .selectFrom("locations")
+    .select(["slug"])
+    .where("slug", "=", locationSlug)
+    .where("active", "=", true)
+    .executeTakeFirst();
+
+  if (!row) {
+    throw new HttpError(400, "Location not found");
+  }
+};
+
+const getClassById = async (classId: string): Promise<SkateClass | null> => {
+  const row = await db
+    .selectFrom("classes")
+    .innerJoin("locations", "locations.slug", "classes.location_slug")
+    .select([
+      "classes.id as id",
+      "classes.title as title",
+      "classes.description as description",
+      "classes.date as date",
+      "classes.time as time",
+      "classes.location_slug as location_slug",
+      "locations.name as location_name",
+      "locations.address as location_address",
+      "locations.color as location_color",
+      "locations.active as location_active",
+      "locations.sort_order as location_sort_order",
+      "classes.status as status",
+      "classes.grid_published as grid_published",
+      "classes.created_by as created_by",
+      "classes.created_at as created_at",
+      "classes.updated_at as updated_at",
+    ])
+    .where("classes.id", "=", classId)
+    .executeTakeFirst();
+
+  if (!row) return null;
+
+  return toSkateClass(row);
 };
 
 const getUserDisplayName = async (userId: string): Promise<string> => {
@@ -526,8 +593,26 @@ const getClassGridResponse = async ({
 }): Promise<ClassGridResponse> => {
   const classRow = await db
     .selectFrom("classes")
-    .selectAll()
-    .where("id", "=", classId)
+    .innerJoin("locations", "locations.slug", "classes.location_slug")
+    .select([
+      "classes.id as id",
+      "classes.title as title",
+      "classes.description as description",
+      "classes.date as date",
+      "classes.time as time",
+      "classes.location_slug as location_slug",
+      "locations.name as location_name",
+      "locations.address as location_address",
+      "locations.color as location_color",
+      "locations.active as location_active",
+      "locations.sort_order as location_sort_order",
+      "classes.status as status",
+      "classes.grid_published as grid_published",
+      "classes.created_by as created_by",
+      "classes.created_at as created_at",
+      "classes.updated_at as updated_at",
+    ])
+    .where("classes.id", "=", classId)
     .executeTakeFirst();
 
   if (!classRow) {
@@ -725,7 +810,29 @@ const handlers: RouteHandlers = {
   },
 
   getClasses: async ({ user }) => {
-    const rows = await db.selectFrom("classes").selectAll().orderBy("date", "asc").execute();
+    const rows = await db
+      .selectFrom("classes")
+      .innerJoin("locations", "locations.slug", "classes.location_slug")
+      .select([
+        "classes.id as id",
+        "classes.title as title",
+        "classes.description as description",
+        "classes.date as date",
+        "classes.time as time",
+        "classes.location_slug as location_slug",
+        "locations.name as location_name",
+        "locations.address as location_address",
+        "locations.color as location_color",
+        "locations.active as location_active",
+        "locations.sort_order as location_sort_order",
+        "classes.status as status",
+        "classes.grid_published as grid_published",
+        "classes.created_by as created_by",
+        "classes.created_at as created_at",
+        "classes.updated_at as updated_at",
+      ])
+      .orderBy("classes.date", "asc")
+      .execute();
     const rsvpsByClass = await getCurrentUserRsvpsByClass(user.uid);
 
     return rows.map((row): ClassListItem => {
@@ -738,19 +845,20 @@ const handlers: RouteHandlers = {
     });
   },
 
+  getLocations: async () => {
+    return getLocations({ activeOnly: true });
+  },
+
   getClass: async ({ params }) => {
-    const row = await db
-      .selectFrom("classes")
-      .selectAll()
-      .where("id", "=", params.id)
-      .executeTakeFirst();
-    return row ? toSkateClass(row) : null;
+    return getClassById(params.id);
   },
 
   createClass: async ({ body, user }) => {
     if (!canAssumeRole(user.role, "admin")) {
       throw new HttpError(403, "Only admins can create classes");
     }
+
+    await ensureActiveLocationExists(body.locationSlug);
 
     const row = await db
       .insertInto("classes")
@@ -759,10 +867,11 @@ const handlers: RouteHandlers = {
         description: body.description ?? null,
         date: body.date,
         time: body.time ?? null,
+        location_slug: body.locationSlug,
         status: body.status,
         created_by: user.uid,
       })
-      .returningAll()
+      .returning(["id"])
       .executeTakeFirstOrThrow();
 
     const userDisplayName = await getUserDisplayName(user.uid);
@@ -772,7 +881,12 @@ const handlers: RouteHandlers = {
       text: `Class created by ${userDisplayName}.`,
     });
 
-    return toSkateClass(row);
+    const skateClass = await getClassById(row.id);
+    if (!skateClass) {
+      throw new HttpError(404, "Class not found");
+    }
+
+    return skateClass;
   },
 
   updateClass: async ({ params, body, user }) => {
@@ -780,17 +894,20 @@ const handlers: RouteHandlers = {
       throw new HttpError(403, "Only admins can update classes");
     }
 
+    await ensureActiveLocationExists(body.locationSlug);
+
     const row = await db
       .updateTable("classes")
       .set({
         title: body.title,
         description: body.description ?? null,
         time: body.time ?? null,
+        location_slug: body.locationSlug,
         status: body.status,
         updated_at: new Date(),
       })
       .where("id", "=", params.id)
-      .returningAll()
+      .returning(["id"])
       .executeTakeFirst();
 
     if (!row) {
@@ -804,7 +921,12 @@ const handlers: RouteHandlers = {
       text: `Class updated by ${userDisplayName}.`,
     });
 
-    return toSkateClass(row);
+    const skateClass = await getClassById(row.id);
+    if (!skateClass) {
+      throw new HttpError(404, "Class not found");
+    }
+
+    return skateClass;
   },
 
   getClassSignups: async ({ params }) => {

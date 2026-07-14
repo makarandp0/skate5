@@ -14,6 +14,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import {
   getClassDateKey,
   getClassDateParts,
+  LocationBadge,
   StatusBadge,
 } from "../components/ClassCard.js";
 import { CalendarDateTile } from "../components/CalendarDateTile.js";
@@ -403,6 +404,7 @@ const WeekendDayCard = ({
                     {dateParts.formatted}
                   </span>
                 )}
+                <LocationBadge location={skateClass.location} />
                 {skateClass.description && (
                   <span className="line-clamp-1 min-w-0">
                     {skateClass.description}

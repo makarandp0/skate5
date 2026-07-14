@@ -11,6 +11,7 @@ import {
   Clock,
   Grid3X3,
   LoaderCircle,
+  MapPin,
   MessageCircle,
   Pencil,
   Save,
@@ -27,7 +28,7 @@ import {
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { CalendarDateTile } from "./CalendarDateTile.js";
-import { getClassDateKey, StatusBadge } from "./ClassCard.js";
+import { getClassDateKey, LocationBadge, StatusBadge } from "./ClassCard.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { Card } from "./ui/Card.js";
@@ -36,6 +37,7 @@ import { cn } from "../lib/utils.js";
 import type {
   ClassAttendancePerson,
   ClassAttendanceResponse,
+  Location,
   RsvpStatus,
   SkateClass,
   ClassStatus,
@@ -171,6 +173,10 @@ export const ClassFullView = ({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(skateClass.title);
   const [editTime, setEditTime] = useState(skateClass.time ?? "");
+  const [editLocationSlug, setEditLocationSlug] = useState(
+    skateClass.locationSlug
+  );
+  const [locations, setLocations] = useState<Location[]>([]);
   const [editDescription, setEditDescription] = useState(
     skateClass.description ?? ""
   );
@@ -200,6 +206,7 @@ export const ClassFullView = ({
     setEditing(false);
     setEditTitle(skateClass.title);
     setEditTime(skateClass.time ?? "");
+    setEditLocationSlug(skateClass.locationSlug);
     setEditDescription(skateClass.description ?? "");
     setEditStatus(skateClass.status);
     setEditError(null);
@@ -209,10 +216,24 @@ export const ClassFullView = ({
     rawDate,
     skateClass.description,
     skateClass.id,
+    skateClass.locationSlug,
     skateClass.status,
     skateClass.time,
     skateClass.title,
   ]);
+
+  useEffect(() => {
+    if (!canEdit) return;
+
+    api
+      .getLocations({})
+      .then((data) => {
+        setLocations(data);
+      })
+      .catch((err: unknown) => {
+        console.error("getLocations failed:", err);
+      });
+  }, [canEdit]);
 
   useEffect(() => {
     setSelectedAttendanceRsvp("yes");
@@ -311,6 +332,7 @@ export const ClassFullView = ({
   const resetEditForm = (): void => {
     setEditTitle(skateClass.title);
     setEditTime(skateClass.time ?? "");
+    setEditLocationSlug(skateClass.locationSlug);
     setEditDescription(skateClass.description ?? "");
     setEditStatus(skateClass.status);
     setEditError(null);
@@ -324,6 +346,7 @@ export const ClassFullView = ({
       const body = updateClassSchema.parse({
         title: editTitle.trim(),
         time: editTime.trim() || undefined,
+        locationSlug: editLocationSlug,
         description: editDescription.trim() || undefined,
         status: classStatusSchema.parse(editStatus),
       });
@@ -432,6 +455,29 @@ export const ClassFullView = ({
                       }}
                       className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
+                  </label>
+                </div>
+
+                <div className="mt-3 max-w-xs">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+                    Location
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <MapPin size={14} />
+                      <select
+                        value={editLocationSlug}
+                        onChange={(event) => {
+                          setEditLocationSlug(event.target.value);
+                        }}
+                        required
+                        className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {locations.map((location) => (
+                          <option key={location.slug} value={location.slug}>
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
                   </label>
                 </div>
 
@@ -550,6 +596,9 @@ export const ClassFullView = ({
                   </span>
                 </div>
               )}
+              <div className="mt-3">
+                <LocationBadge location={skateClass.location} showAddress />
+              </div>
               {skateClass.description && (
                 <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-foreground/80">
                   {skateClass.description}

@@ -24,6 +24,7 @@ import {
   firebaseClientConfigSchema,
   sendEmailSchema,
   sendEmailResponseSchema,
+  locationSchema,
 } from "./schemas.js";
 
 export type RouteDefinition = {
@@ -63,6 +64,11 @@ export const contract = {
     method: "GET",
     path: "/classes",
     response: z.array(classListItemSchema),
+  },
+  getLocations: {
+    method: "GET",
+    path: "/locations",
+    response: z.array(locationSchema),
   },
   getClass: {
     method: "GET",

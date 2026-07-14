@@ -1,10 +1,11 @@
-import { useMemo, useState, type SyntheticEvent } from "react";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Calendar,
   Clock,
   LoaderCircle,
+  MapPin,
   Save,
 } from "lucide-react";
 import { createClassSchema, classStatusSchema } from "@skate5/shared";
@@ -12,7 +13,7 @@ import { api } from "../lib/api.js";
 import { CalendarDateTile } from "../components/CalendarDateTile.js";
 import { Button } from "../components/ui/Button.js";
 import { cn } from "../lib/utils.js";
-import type { ClassStatus } from "@skate5/shared";
+import type { ClassStatus, Location } from "@skate5/shared";
 
 const toDateKey = (date: Date): string => {
   const year = String(date.getFullYear());
@@ -70,6 +71,8 @@ export const ClassCreate = () => {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocationSlug, setSelectedLocationSlug] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ClassStatus>("draft");
   const [saving, setSaving] = useState(false);
@@ -80,6 +83,19 @@ export const ClassCreate = () => {
     : toDateKey(new Date());
   const calendarUrl = `/?month=${backDate.slice(0, 7)}`;
 
+  useEffect(() => {
+    api
+      .getLocations({})
+      .then((data) => {
+        setLocations(data);
+        setSelectedLocationSlug((current) => current || (data[0]?.slug ?? ""));
+      })
+      .catch((err: unknown) => {
+        console.error("getLocations failed:", err);
+        setError("Could not load locations. Try again.");
+      });
+  }, []);
+
   const saveClass = async (): Promise<void> => {
     setSaving(true);
     setError(null);
@@ -89,6 +105,7 @@ export const ClassCreate = () => {
         title: title.trim(),
         date: selectedDate,
         time: time.trim() || undefined,
+        locationSlug: selectedLocationSlug,
         description: description.trim() || undefined,
         status: classStatusSchema.parse(status),
       });
@@ -193,6 +210,27 @@ export const ClassCreate = () => {
                   }}
                   className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
+              </label>
+            </div>
+
+            <div className="mt-3 flex max-w-xs text-sm font-medium text-muted-foreground">
+              <label className="flex min-w-0 items-center gap-1.5">
+                <MapPin size={14} />
+                <span className="sr-only">Location</span>
+                <select
+                  value={selectedLocationSlug}
+                  onChange={(event) => {
+                    setSelectedLocationSlug(event.target.value);
+                  }}
+                  required
+                  className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {locations.map((location) => (
+                    <option key={location.slug} value={location.slug}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

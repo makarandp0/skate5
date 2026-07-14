@@ -5,6 +5,7 @@ import {
   rsvpStatusSchema,
   classStatusSchema,
   chatMessageKindSchema,
+  locationSchema,
   userSchema,
   managedUserSchema,
   skateClassSchema,
@@ -39,6 +40,7 @@ export type ManageableUserRole = z.infer<typeof manageableUserRoleSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
+export type Location = z.infer<typeof locationSchema>;
 export type User = z.infer<typeof userSchema>;
 export type ManagedUser = z.infer<typeof managedUserSchema>;
 export type SkateClass = z.infer<typeof skateClassSchema>;
