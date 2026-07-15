@@ -378,57 +378,69 @@ const WeekendDayCard = ({
           )}
         </div>
 
-        {day.classes.map((skateClass) => (
-          <Link
-            key={skateClass.id}
-            to={`/classes/${skateClass.id}`}
-            className="group/class grid gap-3 rounded-md border border-border/70 bg-background/80 p-3 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0 sm:grid-cols-[minmax(0,1fr)_auto]"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="min-w-0 text-base font-bold leading-snug">
-                  {skateClass.title}
-                </h3>
-                <StatusBadge status={skateClass.status} />
+        {day.classes.map((skateClass) => {
+          const canRsvp = skateClass.status === "published";
+
+          return (
+            <div
+              key={skateClass.id}
+              className="group/class relative grid gap-3 rounded-md border border-border/70 bg-background/80 p-3 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[minmax(0,1fr)_auto]"
+            >
+              <Link
+                to={`/classes/${skateClass.id}`}
+                aria-label={`Open ${skateClass.title}`}
+                className="absolute inset-0 z-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <div className="pointer-events-none relative z-10 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="min-w-0 text-base font-bold leading-snug">
+                    {skateClass.title}
+                  </h3>
+                  <StatusBadge status={skateClass.status} />
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  {skateClass.time ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock size={14} />
+                      {skateClass.time}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarDays size={14} />
+                      {dateParts.formatted}
+                    </span>
+                  )}
+                  <LocationBadge location={skateClass.location} />
+                  {skateClass.description && (
+                    <span className="line-clamp-1 min-w-0">
+                      {skateClass.description}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {skateClass.time ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Clock size={14} />
-                    {skateClass.time}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarDays size={14} />
-                    {dateParts.formatted}
-                  </span>
-                )}
-                <LocationBadge location={skateClass.location} />
-                {skateClass.description && (
-                  <span className="line-clamp-1 min-w-0">
-                    {skateClass.description}
+              <div className="pointer-events-none relative z-10 flex flex-wrap items-center gap-2 self-center sm:justify-end">
+                {canRsvp && (
+                  <span
+                    className={cn(
+                      "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold",
+                      getRsvpClassName(skateClass.currentUserRsvp)
+                    )}
+                  >
+                    {getRsvpLabel(skateClass.currentUserRsvp)}
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover/class:bg-primary group-hover/class:text-primary-foreground">
+                  {canRsvp
+                    ? getRsvpActionLabel(skateClass.currentUserRsvp)
+                    : "Open"}
+                  <ArrowRight size={13} />
+                </span>
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 self-center sm:justify-end">
-              <span
-                className={cn(
-                  "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold",
-                  getRsvpClassName(skateClass.currentUserRsvp)
-                )}
-              >
-                {getRsvpLabel(skateClass.currentUserRsvp)}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover/class:bg-primary group-hover/class:text-primary-foreground">
-                {getRsvpActionLabel(skateClass.currentUserRsvp)}
-                <ArrowRight size={13} />
-              </span>
-            </div>
-          </Link>
-        ))}
+          );
+        })}
       </div>
     </article>
   );

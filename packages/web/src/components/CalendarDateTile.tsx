@@ -21,7 +21,7 @@ export const CalendarDateTile = ({
     <div
       className={cn(
         "flex flex-shrink-0 flex-col overflow-hidden rounded-lg border-2 border-border bg-calendar-paper text-calendar-paper-foreground shadow-md shadow-slate-900/10",
-        large ? "w-28" : "w-20 sm:w-24",
+        large ? "w-32" : "w-24",
         className
       )}
     >
@@ -44,7 +44,7 @@ export const CalendarDateTile = ({
       <div
         className={cn(
           "border-t border-calendar-footer-border bg-calendar-footer px-2 text-center font-bold uppercase tracking-[0.12em] text-calendar-footer-foreground",
-          large ? "py-2 text-xs" : "py-1.5 text-[10px]"
+          large ? "py-2 text-[11px]" : "py-1.5 text-[9px]"
         )}
       >
         {weekday}

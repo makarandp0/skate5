@@ -54,7 +54,7 @@ const getDateParts = (
     }),
     monthLabel: date.toLocaleDateString(undefined, { month: "short" }),
     dayLabel: String(date.getDate()),
-    weekdayLabel: date.toLocaleDateString(undefined, { weekday: "short" }),
+    weekdayLabel: date.toLocaleDateString(undefined, { weekday: "long" }),
   };
 };
 
