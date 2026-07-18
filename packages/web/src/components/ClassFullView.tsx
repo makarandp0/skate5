@@ -8,10 +8,8 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   CircleHelp,
-  Clock,
   Grid3X3,
   LoaderCircle,
-  MapPin,
   MessageCircle,
   Pencil,
   Save,
@@ -27,13 +25,19 @@ import {
 } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { CalendarDateTile } from "./CalendarDateTile.js";
 import {
+  ClassIcon,
+  getClassDisplayTitle,
   getClassDateKey,
-  getClassDateParts,
+  getClassSummaryLabel,
   LocationBadge,
   StatusBadge,
+  shouldShowClassStatus,
 } from "./ClassCard.js";
+import {
+  ClassFormFields,
+  type ClassFormValues,
+} from "./ClassFormFields.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { Card } from "./ui/Card.js";
@@ -89,12 +93,6 @@ const attendanceTabs: Array<{
     countClassName: "text-muted-foreground",
     emptyMessage: "Everyone has responded.",
   },
-];
-
-const statusOptions: Array<{ status: ClassStatus; label: string }> = [
-  { status: "draft", label: "Draft" },
-  { status: "published", label: "Published" },
-  { status: "cancelled", label: "Cancelled" },
 ];
 
 const adminRsvpOptions: Array<{ rsvp: RsvpStatus; label: string }> = [
@@ -180,6 +178,17 @@ type ClassFullViewProps = {
   onClassUpdated?: (skateClass: SkateClass) => void;
 };
 
+const getClassFormValues = (skateClass: SkateClass): ClassFormValues => {
+  return {
+    title: skateClass.title,
+    date: getClassDateKey(skateClass.date),
+    time: skateClass.time ?? "",
+    locationSlug: skateClass.locationSlug,
+    description: skateClass.description ?? "",
+    status: skateClass.status,
+  };
+};
+
 export const ClassFullView = ({
   skateClass,
   headingLevel = "h2",
@@ -190,16 +199,10 @@ export const ClassFullView = ({
   const rawDate = getClassDateKey(skateClass.date);
   const canEdit = profile ? canAssumeRole(profile.role, "admin") : false;
   const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(skateClass.title);
-  const [editTime, setEditTime] = useState(skateClass.time ?? "");
-  const [editLocationSlug, setEditLocationSlug] = useState(
-    skateClass.locationSlug
+  const [editValues, setEditValues] = useState<ClassFormValues>(() =>
+    getClassFormValues(skateClass)
   );
   const [locations, setLocations] = useState<Location[]>([]);
-  const [editDescription, setEditDescription] = useState(
-    skateClass.description ?? ""
-  );
-  const [editStatus, setEditStatus] = useState<ClassStatus>(skateClass.status);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [attendancePeople, setAttendancePeople] = useState<
@@ -223,11 +226,7 @@ export const ClassFullView = ({
 
   useEffect(() => {
     setEditing(false);
-    setEditTitle(skateClass.title);
-    setEditTime(skateClass.time ?? "");
-    setEditLocationSlug(skateClass.locationSlug);
-    setEditDescription(skateClass.description ?? "");
-    setEditStatus(skateClass.status);
+    setEditValues(getClassFormValues(skateClass));
     setEditError(null);
     setActiveAdminRsvpUserId(null);
     setAdminRsvpError(null);
@@ -349,11 +348,7 @@ export const ClassFullView = ({
   };
 
   const resetEditForm = (): void => {
-    setEditTitle(skateClass.title);
-    setEditTime(skateClass.time ?? "");
-    setEditLocationSlug(skateClass.locationSlug);
-    setEditDescription(skateClass.description ?? "");
-    setEditStatus(skateClass.status);
+    setEditValues(getClassFormValues(skateClass));
     setEditError(null);
   };
 
@@ -363,11 +358,11 @@ export const ClassFullView = ({
 
     try {
       const body = updateClassSchema.parse({
-        title: editTitle.trim(),
-        time: editTime.trim() || undefined,
-        locationSlug: editLocationSlug,
-        description: editDescription.trim() || undefined,
-        status: classStatusSchema.parse(editStatus),
+        title: editValues.title.trim(),
+        time: editValues.time.trim() || undefined,
+        locationSlug: editValues.locationSlug,
+        description: editValues.description.trim() || undefined,
+        status: classStatusSchema.parse(editValues.status),
       });
       const updated = await api.updateClass({
         params: { id: skateClass.id },
@@ -388,7 +383,9 @@ export const ClassFullView = ({
     void handleUpdate();
   };
 
-  const dateParts = getClassDateParts(skateClass.date);
+  const displayTitle = getClassDisplayTitle(skateClass);
+  const summaryLabel = getClassSummaryLabel(skateClass);
+  const showStatus = shouldShowClassStatus(skateClass.status, canEdit);
   const selectedTab = attendanceTabs.find(
     (tab) => tab.rsvp === selectedAttendanceRsvp
   );
@@ -405,155 +402,61 @@ export const ClassFullView = ({
       <section className="rounded-lg border border-border/80 bg-background/80 p-4 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-5">
         {editing ? (
           <form className="space-y-4" onSubmit={handleEditSubmit}>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              {showDateTile && (
-                <CalendarDateTile
-                  month={dateParts.monthLabel}
-                  day={dateParts.dayLabel}
-                  weekday={dateParts.weekdayLabel}
-                  size="large"
-                />
-              )}
+            <ClassFormFields
+              values={editValues}
+              locations={locations}
+              onValuesChange={setEditValues}
+              idPrefix={`class-${skateClass.id}`}
+              showPreview={showDateTile}
+              previewLocation={skateClass.location}
+            />
 
-              <div className="min-w-0 flex-1">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {statusOptions.map((option) => {
-                    const active = editStatus === option.status;
+            {editError && (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {editError}
+              </p>
+            )}
 
-                    return (
-                      <button
-                        key={option.status}
-                        type="button"
-                        onClick={() => {
-                          setEditStatus(option.status);
-                        }}
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-semibold uppercase transition-colors",
-                          active
-                            ? "bg-accent text-accent-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <label className="sr-only" htmlFor={`class-title-${skateClass.id}`}>
-                  Title
-                </label>
-                <input
-                  id={`class-title-${skateClass.id}`}
-                  value={editTitle}
-                  onChange={(event) => {
-                    setEditTitle(event.target.value);
-                  }}
-                  required
-                  maxLength={120}
-                  placeholder="Class title"
-                  className="w-full rounded-md border border-border bg-background/80 px-3 py-2 text-2xl font-black leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-3xl"
-                />
-
-                <div className="mt-3 max-w-xs">
-                  <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-                    Time
-                    <input
-                      type="text"
-                      value={editTime}
-                      onChange={(event) => {
-                        setEditTime(event.target.value);
-                      }}
-                      placeholder="10 - 11 AM"
-                      className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-3 max-w-xs">
-                  <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-                    Location
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <MapPin size={14} />
-                      <select
-                        value={editLocationSlug}
-                        onChange={(event) => {
-                          setEditLocationSlug(event.target.value);
-                        }}
-                        required
-                        className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {locations.map((location) => (
-                          <option key={location.slug} value={location.slug}>
-                            {location.name}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
-                  </label>
-                </div>
-
-                <label
-                  className="sr-only"
-                  htmlFor={`class-description-${skateClass.id}`}
-                >
-                  Description
-                </label>
-                <textarea
-                  id={`class-description-${skateClass.id}`}
-                  value={editDescription}
-                  onChange={(event) => {
-                    setEditDescription(event.target.value);
-                  }}
-                  rows={5}
-                  placeholder="Add the class description, notes, or focus for the session."
-                  className="mt-4 min-h-32 w-full resize-y rounded-md border border-border bg-background/80 px-3 py-2 text-sm leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                />
-
-                {editError && (
-                  <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {editError}
-                  </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetEditForm();
+                  setEditing(false);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
                 )}
-
-                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      resetEditForm();
-                      setEditing(false);
-                    }}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? (
-                      <LoaderCircle size={16} className="animate-spin" />
-                    ) : (
-                      <Save size={16} />
-                    )}
-                    Save changes
-                  </Button>
-                </div>
-              </div>
+                Save changes
+              </Button>
             </div>
           </form>
         ) : (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             {showDateTile && (
-              <CalendarDateTile
-                month={dateParts.monthLabel}
-                day={dateParts.dayLabel}
-                weekday={dateParts.weekdayLabel}
+              <ClassIcon
+                skateClass={skateClass}
                 size="large"
               />
             )}
 
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <StatusBadge status={skateClass.status} />
+                {showStatus ? (
+                  <StatusBadge status={skateClass.status} />
+                ) : (
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    Class
+                  </span>
+                )}
                 <div className="flex items-center gap-2">
                   {profile && (
                     <Link
@@ -596,17 +499,14 @@ export const ClassFullView = ({
                 </div>
               </div>
               {headingLevel === "h1" ? (
-                <h1 className={headingClassName}>{skateClass.title}</h1>
+                <h1 className={headingClassName}>{displayTitle}</h1>
               ) : (
-                <h2 className={headingClassName}>{skateClass.title}</h2>
+                <h2 className={headingClassName}>{displayTitle}</h2>
               )}
+              <p className="mt-1 text-sm font-medium text-muted-foreground">
+                {summaryLabel}
+              </p>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
-                {skateClass.time && (
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={14} />
-                    {skateClass.time}
-                  </span>
-                )}
                 <LocationBadge
                   location={skateClass.location}
                   showAddress

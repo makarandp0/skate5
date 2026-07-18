@@ -2,22 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
-  CalendarDays,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
-  Clock,
 } from "lucide-react";
 import { canAssumeRole } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
+  ClassIcon,
+  getClassDisplayTitle,
   getClassDateKey,
-  getClassDateParts,
-  LocationBadge,
+  getClassLinkLabel,
   StatusBadge,
+  shouldShowClassStatus,
 } from "../components/ClassCard.js";
-import { CalendarDateTile } from "../components/CalendarDateTile.js";
 import { Button } from "../components/ui/Button.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
@@ -205,21 +204,25 @@ const getClassCountLabel = (count: number): string => {
 
 const ClassListDayCards = ({
   day,
+  canManageClasses,
 }: {
   day: ClassListDay;
+  canManageClasses: boolean;
 }) => {
-  const dateParts = getClassDateParts(day.key);
-
   return (
     <>
       {day.classes.map((skateClass) => {
         const canRsvp = skateClass.status === "published";
+        const showStatus = shouldShowClassStatus(
+          skateClass.status,
+          canManageClasses
+        );
 
         return (
           <article
             key={skateClass.id}
             className={cn(
-              "group/class relative grid gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]",
               day.isToday &&
                 "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
               day.isPast && "bg-muted/35 text-muted-foreground"
@@ -227,22 +230,20 @@ const ClassListDayCards = ({
           >
             <Link
               to={`/classes/${skateClass.id}`}
-              aria-label={`Open ${skateClass.title}`}
+              aria-label={getClassLinkLabel(skateClass)}
               className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <CalendarDateTile
-              month={dateParts.monthLabel}
-              day={dateParts.dayLabel}
-              weekday={dateParts.weekdayLabel}
-              className="pointer-events-none relative z-10 h-24 rounded-lg sm:h-28"
+            <ClassIcon
+              skateClass={skateClass}
+              className="pointer-events-none relative z-10 min-h-32 rounded-lg"
             />
 
             <div className="pointer-events-none relative z-10 min-w-0 self-center">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="min-w-0 text-base font-bold leading-snug">
-                  {skateClass.title}
+                  {getClassDisplayTitle(skateClass)}
                 </h3>
-                <StatusBadge status={skateClass.status} />
+                {showStatus && <StatusBadge status={skateClass.status} />}
                 {day.isToday && (
                   <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
                     Today
@@ -250,28 +251,16 @@ const ClassListDayCards = ({
                 )}
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {skateClass.time ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Clock size={14} />
-                    {skateClass.time}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarDays size={14} />
-                    {dateParts.formatted}
-                  </span>
-                )}
-                <LocationBadge location={skateClass.location} />
-                {skateClass.description && (
+              {skateClass.description && (
+                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <span className="line-clamp-1 min-w-0">
                     {skateClass.description}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="pointer-events-none relative z-10 flex flex-wrap items-center gap-2 self-center sm:justify-end">
+            <div className="pointer-events-none relative z-10 col-span-2 flex flex-wrap items-center gap-2 self-center sm:col-span-1 sm:justify-end">
               {canRsvp && (
                 <span
                   className={cn(
@@ -331,7 +320,7 @@ export const ClassList = () => {
   }, [classesByDate, monthDate, today, todayKey]);
 
   const monthClassCount = countsByMonth.get(getMonthKey(monthDate)) ?? 0;
-  const canCreateClass = profile ? canAssumeRole(profile.role, "admin") : false;
+  const canManageClasses = profile ? canAssumeRole(profile.role, "admin") : false;
 
   const moveMonth = (offset: number): void => {
     const next = new Date(
@@ -392,7 +381,7 @@ export const ClassList = () => {
           </Button>
         </div>
 
-        {canCreateClass && (
+        {canManageClasses && (
           <div className="mt-4 flex justify-center">
             <Link
               to={`/classes/new?date=${todayKey}`}
@@ -421,6 +410,7 @@ export const ClassList = () => {
           <ClassListDayCards
             key={day.key}
             day={day}
+            canManageClasses={canManageClasses}
           />
         ))}
       </section>
