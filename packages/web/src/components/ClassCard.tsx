@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
+import { ArrowRight, Calendar, Clock, ExternalLink, MapPin } from "lucide-react";
 import { CalendarDateTile } from "./CalendarDateTile.js";
 import { Card } from "./ui/Card.js";
 import { cn } from "../lib/utils.js";
@@ -59,7 +59,7 @@ export const getClassDateParts = (
     }),
     monthLabel: date.toLocaleDateString(undefined, { month: "short" }),
     dayLabel: String(date.getDate()),
-    weekdayLabel: date.toLocaleDateString(undefined, { weekday: "short" }),
+    weekdayLabel: date.toLocaleDateString(undefined, { weekday: "long" }),
   };
 };
 
@@ -81,15 +81,14 @@ export const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
 export const LocationBadge = ({
   location,
   showAddress = false,
+  openInMaps = false,
 }: {
   location: Location;
   showAddress?: boolean;
+  openInMaps?: boolean;
 }) => {
-  return (
-    <span
-      className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 text-xs font-semibold text-foreground"
-      title={showAddress ? location.address : undefined}
-    >
+  const content = (
+    <>
       <MapPin size={13} style={{ color: location.color }} />
       <span className="truncate">{location.name}</span>
       {showAddress && (
@@ -97,6 +96,48 @@ export const LocationBadge = ({
           {location.address}
         </span>
       )}
+      {openInMaps && (
+        <ExternalLink
+          size={12}
+          className="shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+      )}
+    </>
+  );
+  const className = cn(
+    "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 text-xs font-semibold text-foreground",
+    openInMaps &&
+      "transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+  );
+  const title = showAddress
+    ? `Open ${location.name} in maps: ${location.address}`
+    : `Open ${location.name} in maps`;
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${location.name} ${location.address}`
+  )}`;
+
+  if (openInMaps) {
+    return (
+      <a
+        className={className}
+        href={mapUrl}
+        target="_blank"
+        rel="noreferrer"
+        title={title}
+        aria-label={title}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <span
+      className={className}
+      title={showAddress ? location.address : undefined}
+    >
+      {content}
     </span>
   );
 };
@@ -105,8 +146,13 @@ export const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
   const dateParts = getClassDateParts(skateClass.date);
 
   return (
-    <Link to={`/classes/${skateClass.id}`} className="block">
-      <Card className="group flex min-h-32 items-start gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
+    <Card className="group relative flex min-h-32 items-start gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
+      <Link
+        to={`/classes/${skateClass.id}`}
+        aria-label={`Open ${skateClass.title}`}
+        className="absolute inset-0 z-0"
+      />
+      <div className="pointer-events-none relative z-10 flex min-h-32 w-full items-start gap-4">
         <CalendarDateTile
           month={dateParts.monthLabel}
           day={dateParts.dayLabel}
@@ -146,7 +192,7 @@ export const ClassCard = ({ skateClass }: { skateClass: SkateClass }) => {
             </span>
           </div>
         </div>
-      </Card>
-    </Link>
+      </div>
+    </Card>
   );
 };

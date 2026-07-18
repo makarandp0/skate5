@@ -28,7 +28,12 @@ import {
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { CalendarDateTile } from "./CalendarDateTile.js";
-import { getClassDateKey, LocationBadge, StatusBadge } from "./ClassCard.js";
+import {
+  getClassDateKey,
+  getClassDateParts,
+  LocationBadge,
+  StatusBadge,
+} from "./ClassCard.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { Card } from "./ui/Card.js";
@@ -112,6 +117,20 @@ const getRsvpLabel = (rsvp: RsvpStatus): string => {
     default:
       rsvp satisfies never;
       return rsvp;
+  }
+};
+
+const getUnavailableRsvpMessage = (status: ClassStatus): string => {
+  switch (status) {
+    case "draft":
+      return "RSVPs open after this class is published.";
+    case "cancelled":
+      return "RSVPs are closed because this class is cancelled.";
+    case "published":
+      return "RSVPs are open.";
+    default:
+      status satisfies never;
+      return status;
   }
 };
 
@@ -369,15 +388,7 @@ export const ClassFullView = ({
     void handleUpdate();
   };
 
-  const date = new Date(rawDate + "T00:00:00");
-  const isValidDate = !Number.isNaN(date.getTime());
-  const monthLabel = isValidDate
-    ? date.toLocaleDateString(undefined, { month: "short" })
-    : "TBD";
-  const dayLabel = isValidDate ? String(date.getDate()) : "-";
-  const weekdayLabel = isValidDate
-    ? date.toLocaleDateString(undefined, { weekday: "short" })
-    : "Date";
+  const dateParts = getClassDateParts(skateClass.date);
   const selectedTab = attendanceTabs.find(
     (tab) => tab.rsvp === selectedAttendanceRsvp
   );
@@ -397,9 +408,9 @@ export const ClassFullView = ({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               {showDateTile && (
                 <CalendarDateTile
-                  month={monthLabel}
-                  day={dayLabel}
-                  weekday={weekdayLabel}
+                  month={dateParts.monthLabel}
+                  day={dateParts.dayLabel}
+                  weekday={dateParts.weekdayLabel}
                   size="large"
                 />
               )}
@@ -532,9 +543,9 @@ export const ClassFullView = ({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             {showDateTile && (
               <CalendarDateTile
-                month={monthLabel}
-                day={dayLabel}
-                weekday={weekdayLabel}
+                month={dateParts.monthLabel}
+                day={dateParts.dayLabel}
+                weekday={dateParts.weekdayLabel}
                 size="large"
               />
             )}
@@ -588,16 +599,18 @@ export const ClassFullView = ({
               ) : (
                 <h2 className={headingClassName}>{skateClass.title}</h2>
               )}
-              {skateClass.time && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
+                {skateClass.time && (
                   <span className="flex items-center gap-1.5">
                     <Clock size={14} />
                     {skateClass.time}
                   </span>
-                </div>
-              )}
-              <div className="mt-3">
-                <LocationBadge location={skateClass.location} showAddress />
+                )}
+                <LocationBadge
+                  location={skateClass.location}
+                  showAddress
+                  openInMaps
+                />
               </div>
               {skateClass.description && (
                 <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-foreground/80">
@@ -656,6 +669,15 @@ export const ClassFullView = ({
               disabled={rsvpLoading}
             />
           </div>
+        </Card>
+      )}
+
+      {profile && skateClass.status !== "published" && (
+        <Card className="space-y-2">
+          <h3 className="text-sm font-semibold">Your RSVP</h3>
+          <p className="text-sm text-muted-foreground">
+            {getUnavailableRsvpMessage(skateClass.status)}
+          </p>
         </Card>
       )}
 
