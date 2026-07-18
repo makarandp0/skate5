@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Check,
@@ -13,6 +13,7 @@ import {
   manageableUserRoleSchema,
   type ManagedUser,
   type ManageableUserRole,
+  type UpdateUserInput,
   type UserRole,
 } from "@skate5/shared";
 import { Avatar } from "../components/ui/Avatar.js";
@@ -23,6 +24,12 @@ import { api } from "../lib/api.js";
 import { cn } from "../lib/utils.js";
 
 const editableRoles: ManageableUserRole[] = ["member", "instructor", "admin"];
+
+type DraftUserChange = {
+  displayName: string;
+  photoUrl: string;
+  role: ManageableUserRole | null;
+};
 
 const formatDate = (value: string): string => {
   return new Intl.DateTimeFormat(undefined, {
@@ -65,8 +72,8 @@ const getRoleClassName = (role: UserRole): string => {
   }
 };
 
-const getRoleOptions = (role: UserRole): UserRole[] => {
-  if (role === "developer") return ["developer"];
+const getRoleOptions = (role: UserRole): ManageableUserRole[] => {
+  if (role === "developer") return [];
   return editableRoles;
 };
 
@@ -75,97 +82,154 @@ const getManageableRole = (role: UserRole): ManageableUserRole | null => {
   return parsedRole.success ? parsedRole.data : null;
 };
 
-const RoleChangeControl = ({
+const getNormalizedPhotoUrl = (value: string): string | null => {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
+};
+
+const getUserUpdateInput = (
+  user: ManagedUser,
+  draft: DraftUserChange
+): UpdateUserInput | null => {
+  const body: UpdateUserInput = {};
+  const displayName = draft.displayName.trim();
+  const photoUrl = getNormalizedPhotoUrl(draft.photoUrl);
+
+  if (displayName !== user.displayName) {
+    body.displayName = displayName;
+  }
+
+  if (photoUrl !== user.photoUrl) {
+    body.photoUrl = photoUrl;
+  }
+
+  if (draft.role !== null && draft.role !== user.role) {
+    body.role = draft.role;
+  }
+
+  return body.displayName !== undefined ||
+    body.photoUrl !== undefined ||
+    body.role !== undefined
+    ? body
+    : null;
+};
+
+const UserEditForm = ({
   user,
-  disabled,
-  lockedLabel,
-  draftRole,
-  editing,
+  roleLockedLabel,
+  draft,
   saving,
-  onBegin,
   onCancel,
-  onDraftRoleChange,
+  onDraftChange,
   onSave,
 }: {
   user: ManagedUser;
-  disabled: boolean;
-  lockedLabel: string | null;
-  draftRole: ManageableUserRole;
-  editing: boolean;
+  roleLockedLabel: string | null;
+  draft: DraftUserChange;
   saving: boolean;
-  onBegin: () => void;
   onCancel: () => void;
-  onDraftRoleChange: (role: ManageableUserRole) => void;
+  onDraftChange: (draft: DraftUserChange) => void;
   onSave: () => void;
 }) => {
-  if (lockedLabel) {
-    return (
-      <span className="text-xs font-medium text-muted-foreground">
-        {lockedLabel}
-      </span>
-    );
-  }
-
-  if (!editing) {
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={onBegin}
-      >
-        <Pencil size={14} />
-        Change
-      </Button>
-    );
-  }
+  const updateInput = getUserUpdateInput(user, draft);
+  const saveDisabled =
+    saving || !updateInput || draft.displayName.trim().length === 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={draftRole}
-        disabled={saving}
-        aria-label={`New role for ${user.displayName}`}
-        onChange={(event) => {
-          const parsedRole = manageableUserRoleSchema.safeParse(
-            event.currentTarget.value
-          );
-          if (!parsedRole.success) return;
-          onDraftRoleChange(parsedRole.data);
-        }}
-        className="h-9 w-full min-w-32 rounded-md border border-border bg-background/80 px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:w-36"
-      >
-        {getRoleOptions(user.role).map((role) => (
-          <option key={role} value={role}>
-            {getRoleLabel(role)}
-          </option>
-        ))}
-      </select>
-      <Button
-        type="button"
-        size="sm"
-        onClick={onSave}
-        disabled={saving || draftRole === user.role}
-      >
-        {saving ? (
-          <RefreshCw size={14} className="animate-spin" />
-        ) : (
-          <Check size={14} />
-        )}
-        Save
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Cancel role change for ${user.displayName}`}
-        onClick={onCancel}
-        disabled={saving}
-        className="h-8 w-8"
-      >
-        <X size={15} />
-      </Button>
+    <div className="grid gap-3">
+      <div className="grid gap-3 md:grid-cols-[minmax(10rem,1fr)_minmax(12rem,1.4fr)_minmax(8rem,0.75fr)]">
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            Name
+          </span>
+          <input
+            value={draft.displayName}
+            disabled={saving}
+            onChange={(event) => {
+              onDraftChange({
+                ...draft,
+                displayName: event.currentTarget.value,
+              });
+            }}
+            placeholder="Name"
+            className="h-9 w-full rounded-md border border-border bg-background/80 px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            Photo URL
+          </span>
+          <input
+            value={draft.photoUrl}
+            disabled={saving}
+            onChange={(event) => {
+              onDraftChange({
+                ...draft,
+                photoUrl: event.currentTarget.value,
+              });
+            }}
+            placeholder="Photo URL"
+            type="url"
+            className="h-9 w-full rounded-md border border-border bg-background/80 px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            Role
+          </span>
+          {roleLockedLabel ? (
+            <span className="flex h-9 items-center text-xs font-medium text-muted-foreground">
+              {roleLockedLabel}
+            </span>
+          ) : (
+            <select
+              value={draft.role ?? "member"}
+              disabled={saving}
+              aria-label={`New role for ${user.displayName}`}
+              onChange={(event) => {
+                const parsedRole = manageableUserRoleSchema.safeParse(
+                  event.currentTarget.value
+                );
+                if (!parsedRole.success) return;
+                onDraftChange({ ...draft, role: parsedRole.data });
+              }}
+              className="h-9 w-full rounded-md border border-border bg-background/80 px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {getRoleOptions(user.role).map((role) => (
+                <option key={role} value={role}>
+                  {getRoleLabel(role)}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+      </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={onSave}
+          disabled={saveDisabled}
+        >
+          {saving ? (
+            <RefreshCw size={14} className="animate-spin" />
+          ) : (
+            <Check size={14} />
+          )}
+          Save
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Cancel changes for ${user.displayName}`}
+          onClick={onCancel}
+          disabled={saving}
+          className="h-8 w-8"
+        >
+          <X size={15} />
+        </Button>
+      </div>
     </div>
   );
 };
@@ -179,7 +243,11 @@ export const Users = () => {
   const [error, setError] = useState<string | null>(null);
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [draftRole, setDraftRole] = useState<ManageableUserRole>("member");
+  const [draftUser, setDraftUser] = useState<DraftUserChange>({
+    displayName: "",
+    photoUrl: "",
+    role: null,
+  });
 
   const loadUsers = async (): Promise<void> => {
     setLoading(true);
@@ -213,20 +281,21 @@ export const Users = () => {
     });
   }, [query, users]);
 
-  const updateRole = async (
+  const updateUser = async (
     user: ManagedUser,
-    role: ManageableUserRole
+    draft: DraftUserChange
   ): Promise<void> => {
-    if (role === user.role || savingUserId) return;
+    const body = getUserUpdateInput(user, draft);
+    if (!body || savingUserId) return;
 
     setSavingUserId(user.id);
     setError(null);
     setSavedUserId(null);
 
     try {
-      const updatedUser = await api.updateUserRole({
+      const updatedUser = await api.updateUser({
         params: { id: user.id },
-        body: { role },
+        body,
       });
       setUsers((currentUsers) =>
         currentUsers.map((currentUser) =>
@@ -242,14 +311,18 @@ export const Users = () => {
     }
   };
 
-  const beginRoleChange = (user: ManagedUser): void => {
-    const manageableRole = getManageableRole(user.role);
-    if (!manageableRole) return;
-
+  const beginUserChange = (user: ManagedUser): void => {
     setError(null);
     setSavedUserId(null);
     setEditingUserId(user.id);
-    setDraftRole(manageableRole);
+    setDraftUser({
+      displayName: user.displayName,
+      photoUrl: user.photoUrl ?? "",
+      role:
+        user.id === profile?.id || user.role === "developer"
+          ? null
+          : getManageableRole(user.role),
+    });
   };
 
   return (
@@ -285,7 +358,7 @@ export const Users = () => {
       {savedUserId && (
         <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-200">
           <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-          <p>Role updated.</p>
+          <p>User updated.</p>
         </div>
       )}
 
@@ -308,19 +381,21 @@ export const Users = () => {
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="pb-2 pr-3 font-semibold">User</th>
-                <th className="px-3 pb-2 font-semibold">Current</th>
                 <th className="px-3 pb-2 font-semibold">Role</th>
                 <th className="px-3 pb-2 text-right font-semibold">
                   Last login
                 </th>
                 <th className="pb-2 pl-3 text-right font-semibold">Joined</th>
+                <th className="sticky right-0 z-10 bg-background/95 pb-2 pl-3 text-right font-semibold">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => {
                 const disabled =
                   savingUserId !== null && savingUserId !== user.id;
-                const lockedLabel =
+                const roleLockedLabel =
                   user.id === profile?.id
                     ? "Current user"
                     : user.role === "developer"
@@ -330,61 +405,82 @@ export const Users = () => {
                 const editing = editingUserId === user.id;
 
                 return (
-                  <tr key={user.id} className="border-b border-border/70 last:border-0">
-                    <td className="py-3 pr-3">
-                      <div className="flex min-w-56 items-center gap-3">
-                        <Avatar
-                          src={user.photoUrl}
-                          name={user.displayName}
-                          className="h-9 w-9"
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {user.displayName}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {user.email}
-                          </p>
+                  <Fragment key={user.id}>
+                    <tr className="border-b border-border/70 last:border-0">
+                      <td className="py-3 pr-3">
+                        <div className="flex min-w-56 items-center gap-3">
+                          <Avatar
+                            src={user.photoUrl}
+                            name={user.displayName}
+                            className="h-9 w-9"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {user.displayName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {user.email}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
-                          getRoleClassName(user.role)
-                        )}
-                      >
-                        {getRoleLabel(user.role)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <RoleChangeControl
-                        user={user}
-                        disabled={disabled}
-                        lockedLabel={lockedLabel}
-                        draftRole={draftRole}
-                        editing={editing}
-                        saving={saving}
-                        onBegin={() => {
-                          beginRoleChange(user);
-                        }}
-                        onCancel={() => {
-                          setEditingUserId(null);
-                        }}
-                        onDraftRoleChange={setDraftRole}
-                        onSave={() => {
-                          void updateRole(user, draftRole);
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-right text-xs text-muted-foreground">
-                      {formatDateTime(user.lastLoginAt)}
-                    </td>
-                    <td className="py-3 pl-3 text-right text-xs text-muted-foreground">
-                      {formatDate(user.createdAt)}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
+                            getRoleClassName(user.role)
+                          )}
+                        >
+                          {getRoleLabel(user.role)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right text-xs text-muted-foreground">
+                        {formatDateTime(user.lastLoginAt)}
+                      </td>
+                      <td className="py-3 pl-3 text-right text-xs text-muted-foreground">
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td className="sticky right-0 z-10 bg-background/95 py-3 pl-3 text-right">
+                        <Button
+                          type="button"
+                          variant={editing ? "secondary" : "outline"}
+                          size="icon"
+                          aria-label={`Edit ${user.displayName}`}
+                          title={`Edit ${user.displayName}`}
+                          disabled={disabled}
+                          onClick={() => {
+                            if (editing) {
+                              setEditingUserId(null);
+                              return;
+                            }
+                            beginUserChange(user);
+                          }}
+                          className="h-8 w-8"
+                        >
+                          {editing ? <X size={15} /> : <Pencil size={15} />}
+                        </Button>
+                      </td>
+                    </tr>
+                    {editing && (
+                      <tr className="border-b border-border/70 bg-muted/30">
+                        <td colSpan={5} className="px-3 py-3">
+                          <UserEditForm
+                            user={user}
+                            roleLockedLabel={roleLockedLabel}
+                            draft={draftUser}
+                            saving={saving}
+                            onCancel={() => {
+                              setEditingUserId(null);
+                            }}
+                            onDraftChange={setDraftUser}
+                            onSave={() => {
+                              void updateUser(user, draftUser);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -395,7 +491,7 @@ export const Users = () => {
           {filteredUsers.map((user) => {
             const disabled =
               savingUserId !== null && savingUserId !== user.id;
-            const lockedLabel =
+            const roleLockedLabel =
               user.id === profile?.id
                 ? "Current user"
                 : user.role === "developer"
@@ -421,35 +517,52 @@ export const Users = () => {
                       {user.email}
                     </p>
                   </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
                   <span
                     className={cn(
-                      "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
+                      "min-w-0 rounded-full border px-2 py-0.5 text-xs font-medium",
                       getRoleClassName(user.role)
                     )}
                   >
                     {getRoleLabel(user.role)}
                   </span>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <RoleChangeControl
-                    user={user}
+                  <Button
+                    type="button"
+                    variant={editing ? "secondary" : "outline"}
+                    size="icon"
+                    aria-label={`Edit ${user.displayName}`}
+                    title={`Edit ${user.displayName}`}
                     disabled={disabled}
-                    lockedLabel={lockedLabel}
-                    draftRole={draftRole}
-                    editing={editing}
-                    saving={saving}
-                    onBegin={() => {
-                      beginRoleChange(user);
+                    onClick={() => {
+                      if (editing) {
+                        setEditingUserId(null);
+                        return;
+                      }
+                      beginUserChange(user);
                     }}
-                    onCancel={() => {
-                      setEditingUserId(null);
-                    }}
-                    onDraftRoleChange={setDraftRole}
-                    onSave={() => {
-                      void updateRole(user, draftRole);
-                    }}
-                  />
+                    className="h-8 w-8 shrink-0"
+                  >
+                    {editing ? <X size={15} /> : <Pencil size={15} />}
+                  </Button>
                 </div>
+                {editing && (
+                  <div className="mt-3 border-t border-border/70 bg-muted/30 px-3 py-3">
+                    <UserEditForm
+                      user={user}
+                      roleLockedLabel={roleLockedLabel}
+                      draft={draftUser}
+                      saving={saving}
+                      onCancel={() => {
+                        setEditingUserId(null);
+                      }}
+                      onDraftChange={setDraftUser}
+                      onSave={() => {
+                        void updateUser(user, draftUser);
+                      }}
+                    />
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-muted-foreground">
                   Last login {formatDateTime(user.lastLoginAt)}
                 </p>

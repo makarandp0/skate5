@@ -23,20 +23,11 @@ import { Skeleton } from "../components/ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
 import type { ClassListItem, RsvpStatus } from "@skate5/shared";
 
-type WeekendDay = {
-  date: Date;
+type ClassListDay = {
   key: string;
-  inCurrentMonth: boolean;
   isPast: boolean;
   isToday: boolean;
   classes: ClassListItem[];
-};
-
-type WeekendGroup = {
-  startKey: string;
-  endKey: string;
-  isCurrentWeekend: boolean;
-  days: WeekendDay[];
 };
 
 const toDateKey = (date: Date): string => {
@@ -74,20 +65,6 @@ const getMonthLabel = (date: Date): string => {
     month: "long",
     year: "numeric",
   });
-};
-
-const getDateRangeLabel = (start: Date, end: Date): string => {
-  const sameMonth = start.getMonth() === end.getMonth();
-  const startLabel = start.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-  const endLabel = end.toLocaleDateString(undefined, {
-    month: sameMonth ? undefined : "short",
-    day: "numeric",
-  });
-
-  return `${startLabel}-${endLabel}`;
 };
 
 const getSortableDateTime = (value: string): number => {
@@ -141,82 +118,37 @@ const countClassesByMonth = (classes: ClassListItem[]): Map<string, number> => {
   return counts;
 };
 
-const getWeekendGroups = (
+const getClassListDays = (
   monthDate: Date,
   todayKey: string,
   classesByDate: Map<string, ClassListItem[]>
-): WeekendGroup[] => {
-  const firstOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth(),
-    1
-  );
-  const lastOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth() + 1,
-    0
-  );
-  const start = new Date(firstOfMonth);
-  const daysSinceSaturday = (firstOfMonth.getDay() + 1) % 7;
-  start.setDate(firstOfMonth.getDate() - daysSinceSaturday);
+): ClassListDay[] => {
+  const monthKey = getMonthKey(monthDate);
 
-  const groups: WeekendGroup[] = [];
-
-  for (
-    const saturday = new Date(start);
-    saturday <= lastOfMonth;
-    saturday.setDate(saturday.getDate() + 7)
-  ) {
-    const sunday = new Date(saturday);
-    sunday.setDate(saturday.getDate() + 1);
-
-    if (
-      saturday.getMonth() !== monthDate.getMonth() &&
-      sunday.getMonth() !== monthDate.getMonth()
-    ) {
-      continue;
-    }
-
-    const days = [saturday, sunday].map((date) => {
-      const dayDate = new Date(date);
-      const key = toDateKey(dayDate);
-
-      return {
-        date: dayDate,
-        key,
-        inCurrentMonth: dayDate.getMonth() === monthDate.getMonth(),
-        isPast: key < todayKey,
-        isToday: key === todayKey,
-        classes: classesByDate.get(key) ?? [],
-      };
-    });
-    const startKey = toDateKey(saturday);
-    const endKey = toDateKey(sunday);
-
-    groups.push({
-      startKey,
-      endKey,
-      isCurrentWeekend: startKey <= todayKey && todayKey <= endKey,
-      days,
-    });
-  }
-
-  return groups;
+  return [...classesByDate.entries()]
+    .filter(([key]) => key.startsWith(monthKey))
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+    .map(([key, dateClasses]) => ({
+      key,
+      isPast: key < todayKey,
+      isToday: key === todayKey,
+      classes: dateClasses,
+    }));
 };
 
-const getOrderedWeekendGroups = (
-  groups: WeekendGroup[],
+const getOrderedClassListDays = (
+  days: ClassListDay[],
   monthDate: Date,
   today: Date,
   todayKey: string
-): WeekendGroup[] => {
+): ClassListDay[] => {
   if (getMonthKey(monthDate) !== getMonthKey(today)) {
-    return groups;
+    return days;
   }
 
   return [
-    ...groups.filter((group) => group.endKey >= todayKey),
-    ...groups.filter((group) => group.endKey < todayKey),
+    ...days.filter((day) => day.key >= todayKey),
+    ...days.filter((day) => day.key < todayKey),
   ];
 };
 
@@ -271,178 +203,96 @@ const getClassCountLabel = (count: number): string => {
   return count === 1 ? "1 class" : `${String(count)} classes`;
 };
 
-const WeekendDayCard = ({
-  canCreateClass,
+const ClassListDayCards = ({
   day,
 }: {
-  canCreateClass: boolean;
-  day: WeekendDay;
+  day: ClassListDay;
 }) => {
   const dateParts = getClassDateParts(day.key);
 
-  if (day.classes.length === 0) {
-    const emptyClassName = cn(
-      "grid gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all sm:grid-cols-[auto_minmax(0,1fr)_auto]",
-      canCreateClass &&
-        "group hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0",
-      day.isToday && "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
-      day.isPast && "bg-muted/35 text-muted-foreground",
-      !day.inCurrentMonth && "bg-muted/20 text-muted-foreground"
-    );
-    const content = (
-      <>
-        <CalendarDateTile
-          month={dateParts.monthLabel}
-          day={dateParts.dayLabel}
-          weekday={dateParts.weekdayLabel}
-          className="h-24 rounded-lg sm:h-28"
-        />
-
-        <div className="min-w-0 self-center">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 text-base font-bold leading-snug">
-              No class planned
-            </h3>
-            {day.isToday && (
-              <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
-                Today
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays size={14} />
-              {dateParts.formatted}
-            </span>
-            <span>
-              {canCreateClass
-                ? "Create the first class for this date."
-                : "No class is planned for this date."}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 self-center sm:justify-end">
-          {canCreateClass && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-              Create class
-              <ArrowRight size={13} />
-            </span>
-          )}
-        </div>
-      </>
-    );
-
-    if (!canCreateClass) {
-      return <div className={emptyClassName}>{content}</div>;
-    }
-
-    return (
-      <Link
-        to={`/classes/new?date=${day.key}`}
-        className={emptyClassName}
-      >
-        {content}
-      </Link>
-    );
-  }
-
   return (
-    <article
-      className={cn(
-        "grid gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 sm:grid-cols-[auto_minmax(0,1fr)]",
-        day.isToday && "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
-        day.isPast && "bg-muted/35 text-muted-foreground",
-        !day.inCurrentMonth && "bg-muted/20 text-muted-foreground"
-      )}
-    >
-      <CalendarDateTile
-        month={dateParts.monthLabel}
-        day={dateParts.dayLabel}
-        weekday={dateParts.weekdayLabel}
-        className="h-24 rounded-lg sm:h-28"
-      />
+    <>
+      {day.classes.map((skateClass) => {
+        const canRsvp = skateClass.status === "published";
 
-      <div className="min-w-0 space-y-2 self-center">
-        <div className="flex flex-wrap items-center gap-2">
-          {day.classes.length > 1 && (
-            <span className="inline-flex rounded-full bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary">
-              {getClassCountLabel(day.classes.length)}
-            </span>
-          )}
-          {day.isToday && (
-            <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
-              Today
-            </span>
-          )}
-        </div>
+        return (
+          <article
+            key={skateClass.id}
+            className={cn(
+              "group/class relative grid gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              day.isToday &&
+                "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
+              day.isPast && "bg-muted/35 text-muted-foreground"
+            )}
+          >
+            <Link
+              to={`/classes/${skateClass.id}`}
+              aria-label={`Open ${skateClass.title}`}
+              className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <CalendarDateTile
+              month={dateParts.monthLabel}
+              day={dateParts.dayLabel}
+              weekday={dateParts.weekdayLabel}
+              className="pointer-events-none relative z-10 h-24 rounded-lg sm:h-28"
+            />
 
-        {day.classes.map((skateClass) => {
-          const canRsvp = skateClass.status === "published";
-
-          return (
-            <div
-              key={skateClass.id}
-              className="group/class relative grid gap-3 rounded-md border border-border/70 bg-background/80 p-3 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[minmax(0,1fr)_auto]"
-            >
-              <Link
-                to={`/classes/${skateClass.id}`}
-                aria-label={`Open ${skateClass.title}`}
-                className="absolute inset-0 z-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <div className="pointer-events-none relative z-10 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="min-w-0 text-base font-bold leading-snug">
-                    {skateClass.title}
-                  </h3>
-                  <StatusBadge status={skateClass.status} />
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  {skateClass.time ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Clock size={14} />
-                      {skateClass.time}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays size={14} />
-                      {dateParts.formatted}
-                    </span>
-                  )}
-                  <LocationBadge location={skateClass.location} />
-                  {skateClass.description && (
-                    <span className="line-clamp-1 min-w-0">
-                      {skateClass.description}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="pointer-events-none relative z-10 flex flex-wrap items-center gap-2 self-center sm:justify-end">
-                {canRsvp && (
-                  <span
-                    className={cn(
-                      "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold",
-                      getRsvpClassName(skateClass.currentUserRsvp)
-                    )}
-                  >
-                    {getRsvpLabel(skateClass.currentUserRsvp)}
+            <div className="pointer-events-none relative z-10 min-w-0 self-center">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="min-w-0 text-base font-bold leading-snug">
+                  {skateClass.title}
+                </h3>
+                <StatusBadge status={skateClass.status} />
+                {day.isToday && (
+                  <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
+                    Today
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover/class:bg-primary group-hover/class:text-primary-foreground">
-                  {canRsvp
-                    ? getRsvpActionLabel(skateClass.currentUserRsvp)
-                    : "Open"}
-                  <ArrowRight size={13} />
-                </span>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                {skateClass.time ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock size={14} />
+                    {skateClass.time}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarDays size={14} />
+                    {dateParts.formatted}
+                  </span>
+                )}
+                <LocationBadge location={skateClass.location} />
+                {skateClass.description && (
+                  <span className="line-clamp-1 min-w-0">
+                    {skateClass.description}
+                  </span>
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
-    </article>
+
+            <div className="pointer-events-none relative z-10 flex flex-wrap items-center gap-2 self-center sm:justify-end">
+              {canRsvp && (
+                <span
+                  className={cn(
+                    "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold",
+                    getRsvpClassName(skateClass.currentUserRsvp)
+                  )}
+                >
+                  {getRsvpLabel(skateClass.currentUserRsvp)}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover/class:bg-primary group-hover/class:text-primary-foreground">
+                {canRsvp
+                  ? getRsvpActionLabel(skateClass.currentUserRsvp)
+                  : "Open"}
+                <ArrowRight size={13} />
+              </span>
+            </div>
+          </article>
+        );
+      })}
+    </>
   );
 };
 
@@ -471,9 +321,9 @@ export const ClassList = () => {
 
   const classesByDate = useMemo(() => groupClassesByDate(classes), [classes]);
   const countsByMonth = useMemo(() => countClassesByMonth(classes), [classes]);
-  const weekendGroups = useMemo(() => {
-    return getOrderedWeekendGroups(
-      getWeekendGroups(monthDate, todayKey, classesByDate),
+  const classListDays = useMemo(() => {
+    return getOrderedClassListDays(
+      getClassListDays(monthDate, todayKey, classesByDate),
       monthDate,
       today,
       todayKey
@@ -525,7 +375,7 @@ export const ClassList = () => {
               {getMonthLabel(monthDate)}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Weekend classes with your RSVP at a glance.
+              Classes with your RSVP at a glance.
             </p>
           </div>
 
@@ -555,7 +405,7 @@ export const ClassList = () => {
         )}
       </section>
 
-      <section className="space-y-3" aria-label="Weekend class list">
+      <section className="space-y-3" aria-label="Class list">
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
             {monthClassCount > 0
@@ -563,58 +413,16 @@ export const ClassList = () => {
               : "No classes this month"}
           </p>
           <p className="text-xs font-medium text-muted-foreground">
-            Upcoming weekends appear first.
+            Upcoming dates appear first.
           </p>
         </div>
 
-        {weekendGroups.map((group) => {
-          const startDate = group.days[0].date;
-          const endDate = group.days[1].date;
-          const rangeLabel = getDateRangeLabel(startDate, endDate);
-          const classCount = group.days.reduce(
-            (total, day) => total + day.classes.length,
-            0
-          );
-
-          return (
-            <article
-              key={group.startKey}
-              className={cn(
-                "rounded-lg border border-border/80 bg-background/80 p-3 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-4",
-                group.isCurrentWeekend &&
-                  "border-primary/50 bg-primary/[0.035] shadow-primary/10"
-              )}
-            >
-              <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-[0.12em] text-muted-foreground">
-                    {rangeLabel}
-                  </h2>
-                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-                    {classCount > 0
-                      ? getClassCountLabel(classCount)
-                      : "No classes scheduled"}
-                  </p>
-                </div>
-                {group.isCurrentWeekend && (
-                  <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground">
-                    This weekend
-                  </span>
-                )}
-              </header>
-
-              <div className="grid gap-3">
-                {group.days.map((day) => (
-                  <WeekendDayCard
-                    key={day.key}
-                    canCreateClass={canCreateClass}
-                    day={day}
-                  />
-                ))}
-              </div>
-            </article>
-          );
-        })}
+        {classListDays.map((day) => (
+          <ClassListDayCards
+            key={day.key}
+            day={day}
+          />
+        ))}
       </section>
     </div>
   );

@@ -13,7 +13,7 @@ import {
   classGridResponseSchema,
   createClassSchema,
   updateClassSchema,
-  updateUserRoleSchema,
+  updateUserSchema,
   rsvpRequestSchema,
   sendMessageSchema,
   createBadgeSchema,
@@ -53,11 +53,11 @@ export const contract = {
     path: "/users",
     response: z.array(managedUserSchema),
   },
-  updateUserRole: {
+  updateUser: {
     method: "PUT",
-    path: "/users/:id/role",
+    path: "/users/:id",
     params: z.object({ id: z.string() }),
-    body: updateUserRoleSchema,
+    body: updateUserSchema,
     response: managedUserSchema,
   },
   getClasses: {
