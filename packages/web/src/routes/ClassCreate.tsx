@@ -198,16 +198,17 @@ export const ClassCreate = () => {
               </label>
             </div>
 
-            <div className="mt-3 flex max-w-44 text-sm font-medium text-muted-foreground">
+            <div className="mt-3 flex max-w-xs text-sm font-medium text-muted-foreground">
               <label className="flex min-w-0 items-center gap-1.5">
                 <Clock size={14} />
                 <span className="sr-only">Time</span>
                 <input
-                  type="time"
+                  type="text"
                   value={time}
                   onChange={(event) => {
                     setTime(event.target.value);
                   }}
+                  placeholder="10 - 11 AM"
                   className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>

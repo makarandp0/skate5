@@ -183,9 +183,17 @@ export const updateClassSchema = z.object({
   status: classStatusSchema.default("draft"),
 });
 
-export const updateUserRoleSchema = z.object({
-  role: manageableUserRoleSchema,
-});
+export const updateUserSchema = z
+  .object({
+    displayName: z.string().trim().min(1).optional(),
+    photoUrl: z.url().nullable().optional(),
+    role: manageableUserRoleSchema.optional(),
+  })
+  .refine(
+    ({ displayName, photoUrl, role }) =>
+      displayName !== undefined || photoUrl !== undefined || role !== undefined,
+    "At least one user property must be provided"
+  );
 
 export const rsvpRequestSchema = z.object({
   rsvp: rsvpStatusSchema,

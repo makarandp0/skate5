@@ -774,12 +774,8 @@ const handlers: RouteHandlers = {
     return getManagedUsers();
   },
 
-  updateUserRole: async ({ params, body, user }) => {
+  updateUser: async ({ params, body, user }) => {
     requireAdminAccess(user.role, "Only admins can manage users");
-
-    if (params.id === user.uid) {
-      throw new HttpError(400, "Admins cannot change their own role");
-    }
 
     const current = await db
       .selectFrom("users")
@@ -792,19 +788,36 @@ const handlers: RouteHandlers = {
     }
 
     const currentRole = userRoleSchema.parse(current.role);
-    if (currentRole === "developer") {
-      throw new HttpError(403, "Developer roles cannot be changed here");
+    if (body.role !== undefined) {
+      if (params.id === user.uid) {
+        throw new HttpError(400, "Admins cannot change their own role");
+      }
+
+      if (currentRole === "developer") {
+        throw new HttpError(403, "Developer roles cannot be changed here");
+      }
     }
 
-    const row = await db
+    let update = db
       .updateTable("users")
       .set({
-        role: body.role,
         updated_at: new Date(),
       })
-      .where("id", "=", params.id)
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      .where("id", "=", params.id);
+
+    if (body.displayName !== undefined) {
+      update = update.set({ display_name: body.displayName });
+    }
+
+    if (body.photoUrl !== undefined) {
+      update = update.set({ photo_url: body.photoUrl });
+    }
+
+    if (body.role !== undefined) {
+      update = update.set({ role: body.role });
+    }
+
+    const row = await update.returningAll().executeTakeFirstOrThrow();
 
     return toManagedUser(row);
   },

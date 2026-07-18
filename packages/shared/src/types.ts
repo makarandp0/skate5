@@ -23,7 +23,7 @@ import {
   firebaseClientConfigSchema,
   createClassSchema,
   updateClassSchema,
-  updateUserRoleSchema,
+  updateUserSchema,
   rsvpRequestSchema,
   createBadgeSchema,
   createGridEntrySchema,
@@ -64,7 +64,7 @@ export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type UpdateClassInput = z.infer<typeof updateClassSchema>;
-export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
 export type CreateBadgeInput = z.infer<typeof createBadgeSchema>;
 export type CreateGridEntryInput = z.infer<typeof createGridEntrySchema>;

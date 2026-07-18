@@ -455,15 +455,16 @@ export const ClassFullView = ({
                   className="w-full rounded-md border border-border bg-background/80 px-3 py-2 text-2xl font-black leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-3xl"
                 />
 
-                <div className="mt-3 max-w-44">
+                <div className="mt-3 max-w-xs">
                   <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
                     Time
                     <input
-                      type="time"
+                      type="text"
                       value={editTime}
                       onChange={(event) => {
                         setEditTime(event.target.value);
                       }}
+                      placeholder="10 - 11 AM"
                       className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </label>
