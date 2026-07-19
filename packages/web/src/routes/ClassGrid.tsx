@@ -31,7 +31,11 @@ import {
 } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { getClassDateKey, LocationBadge } from "../components/ClassCard.js";
+import {
+  ClassPills,
+  getClassDateKey,
+  LocationBadge,
+} from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
@@ -200,7 +204,8 @@ const buildGridEmailText = ({
   return [
     message,
     "",
-    `${grid.class.title} - ${getDateLabel(grid.class.date)}`,
+    getDateLabel(grid.class.date),
+    grid.class.pills.length > 0 ? `Notes: ${grid.class.pills.join(", ")}` : "",
     `Location: ${grid.class.location.name} (${grid.class.location.address})`,
     "",
     "Time | Badge | Description | Instructors",
@@ -245,8 +250,12 @@ const buildGridEmailHtml = ({
 
   return `
     <div style="font-family:Arial,sans-serif;color:#18181b;line-height:1.5;">
-      <h1 style="margin:0 0 4px;font-size:24px;">${escapeHtml(grid.class.title)}</h1>
-      <p style="margin:0;color:#52525b;">${escapeHtml(getDateLabel(grid.class.date))}</p>
+      <h1 style="margin:0 0 4px;font-size:24px;">${escapeHtml(getDateLabel(grid.class.date))}</h1>
+      ${
+        grid.class.pills.length > 0
+          ? `<p style="margin:0;color:#52525b;">${escapeHtml(grid.class.pills.join(", "))}</p>`
+          : ""
+      }
       <p style="margin:0 0 20px;color:#52525b;">${escapeHtml(grid.class.location.name)} - ${escapeHtml(grid.class.location.address)}</p>
       ${textToHtmlParagraphs(message)}
       <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;">
@@ -916,11 +925,9 @@ export const ClassGrid = () => {
               <span>Class grid</span>
             </div>
             <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">
-              {grid.class.title}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
               {getDateLabel(grid.class.date)}
-            </p>
+            </h1>
+            <ClassPills pills={grid.class.pills} className="mt-3" />
             <div className="mt-3">
               <LocationBadge location={grid.class.location} showAddress />
             </div>

@@ -19,6 +19,8 @@ export const classStatusSchema = z.enum(["draft", "published", "cancelled"]);
 
 export const chatMessageKindSchema = z.enum(["user", "system"]);
 
+export const classPillSchema = z.string().trim().min(1).max(160);
+
 export const locationSchema = z.object({
   slug: z.string(),
   name: z.string(),
@@ -57,6 +59,7 @@ export const skateClassSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
+  pills: z.array(classPillSchema),
   date: z.string(),
   time: z.string().nullable(),
   locationSlug: z.string(),
@@ -168,19 +171,17 @@ export const firebaseClientConfigSchema = z.object({
 // Request/input schemas for API endpoints
 
 export const createClassSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().optional(),
   date: z.iso.date(),
   time: z.string().optional(),
   locationSlug: z.string().min(1),
+  pills: z.array(classPillSchema).max(8).default([]),
   status: classStatusSchema.default("draft"),
 });
 
 export const updateClassSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().optional(),
   time: z.string().optional(),
   locationSlug: z.string().min(1),
+  pills: z.array(classPillSchema).max(8).default([]),
   status: classStatusSchema.default("draft"),
 });
 

@@ -11,6 +11,7 @@ import { cn } from "../lib/utils.js";
 import { Avatar } from "./ui/Avatar.js";
 import { Button } from "./ui/Button.js";
 import { Skeleton } from "./ui/Skeleton.js";
+import { getClassSummaryLabel } from "./ClassCard.js";
 import type { ChatMessage, SkateClass } from "@skate5/shared";
 
 type ClassChatWindowProps = {
@@ -28,6 +29,7 @@ const formatMessageTime = (value: string): string => {
 };
 
 export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
+  const classLabel = getClassSummaryLabel(skateClass);
   const { profile } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -92,7 +94,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
 
   return (
     <section
-      aria-label={`Chat for ${skateClass.title}`}
+      aria-label={`Chat for ${classLabel}`}
       className="flex h-[calc(100dvh-9rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm shadow-slate-900/5"
     >
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
@@ -101,7 +103,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold">Class chat</h2>
             <p className="truncate text-xs text-muted-foreground">
-              {skateClass.title}
+              {classLabel}
             </p>
           </div>
         </div>

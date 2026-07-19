@@ -38,6 +38,7 @@ export interface ClassesTable {
   id: Generated<string>;
   title: string;
   description: string | null;
+  pills: Generated<string[]>;
   date: string;
   time: string | null;
   location_slug: string;

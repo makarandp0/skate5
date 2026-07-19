@@ -1,6 +1,7 @@
 import {
   classAttendancePersonSchema,
   chatMessageKindSchema,
+  classPillSchema,
   gridEntrySchema,
   gridInstructorSchema,
   managedUserSchema,
@@ -70,6 +71,7 @@ interface ClassRow {
   id: string;
   title: string;
   description: string | null;
+  pills: unknown;
   date: string;
   time: string | null;
   location_slug: string;
@@ -166,6 +168,10 @@ const assertRsvpStatus = (s: string): Signup["rsvp"] => {
   throw new Error(`Invalid rsvp status: ${s}`);
 };
 
+const assertClassPills = (pills: unknown): SkateClass["pills"] => {
+  return classPillSchema.array().parse(pills);
+};
+
 export const toLocation = (row: LocationRow): Location => {
   return locationSchema.parse({
     slug: row.slug,
@@ -183,6 +189,7 @@ export const toSkateClass = (row: ClassRow): SkateClass => {
     id: row.id,
     title: row.title,
     description: row.description,
+    pills: assertClassPills(row.pills),
     date: row.date,
     time: row.time,
     locationSlug: row.location_slug,

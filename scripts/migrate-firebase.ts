@@ -10,6 +10,7 @@ import { z } from "zod";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import pg from "pg";
 import type { Database } from "../packages/api/src/db/types.js";
+import { classPillSchema } from "../packages/shared/src/schemas.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultLocationSlug = "lynnwood-bowl-and-skate";
@@ -104,6 +105,7 @@ const firebaseAuthExportSchema = z.union([
 
 type FirebaseTimestamp = z.infer<typeof firebaseTimestampSchema>;
 type FirebaseUser = z.infer<typeof firebaseUserSchema>;
+type FirebaseClass = z.infer<typeof firebaseClassSchema>;
 type FirebaseAuthExportUser = z.infer<typeof firebaseAuthExportUserSchema>;
 
 type AuthUserMetadata = {
@@ -141,6 +143,38 @@ function getInstructorArray(instructors: Record<string, string> | string[] | und
   if (!instructors) return [];
   if (Array.isArray(instructors)) return instructors;
   return Object.values(instructors);
+}
+
+const generatedDayDateTitlePattern =
+  /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) - (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}$/i;
+
+function shouldImportLegacyClassPill(value: string): boolean {
+  const lowerValue = value.toLowerCase();
+  return (
+    lowerValue !== "description goes here" &&
+    !generatedDayDateTitlePattern.test(value)
+  );
+}
+
+function getLegacyClassPills(cls: FirebaseClass): string[] {
+  const pills: string[] = [];
+
+  for (const value of [cls.title, cls.description ?? ""]) {
+    const parsed = classPillSchema.safeParse(value);
+    if (!parsed.success || !shouldImportLegacyClassPill(parsed.data)) {
+      continue;
+    }
+
+    if (!pills.some((pill) => pill.toLowerCase() === parsed.data.toLowerCase())) {
+      pills.push(parsed.data);
+    }
+  }
+
+  return pills.slice(0, 8);
+}
+
+function jsonbStringArray(values: string[]) {
+  return sql<string[]>`${JSON.stringify(values)}::jsonb`;
 }
 
 function getAuthExportCreatedAt(user: FirebaseAuthExportUser): Date | null {
@@ -339,6 +373,7 @@ await db.transaction().execute(async (trx) => {
     .values({
       slug: defaultLocationSlug,
       name: "Lynnwood Bowl and Skate",
+      short_name: "Lynnwood",
       address: "6210 200th St SW, Lynnwood, WA 98036",
       color: "#2563eb",
       sort_order: 0,
@@ -346,6 +381,7 @@ await db.transaction().execute(async (trx) => {
     .onConflict((oc) =>
       oc.column("slug").doUpdateSet({
         name: "Lynnwood Bowl and Skate",
+        short_name: "Lynnwood",
         address: "6210 200th St SW, Lynnwood, WA 98036",
         color: "#2563eb",
         active: true,
@@ -360,6 +396,7 @@ await db.transaction().execute(async (trx) => {
     .values({
       slug: "rock-and-roll-rink-issaquah",
       name: "Rock and Roll Rink - Issaquah",
+      short_name: "Issaquah",
       address: "5700 E Lake Sammamish Pkwy SE, Issaquah, WA 98029",
       color: "#16a34a",
       sort_order: 1,
@@ -367,6 +404,7 @@ await db.transaction().execute(async (trx) => {
     .onConflict((oc) =>
       oc.column("slug").doUpdateSet({
         name: "Rock and Roll Rink - Issaquah",
+        short_name: "Issaquah",
         address: "5700 E Lake Sammamish Pkwy SE, Issaquah, WA 98029",
         color: "#16a34a",
         active: true,
@@ -445,8 +483,9 @@ await db.transaction().execute(async (trx) => {
     const result = await trx
       .insertInto("classes")
       .values({
-        title: cls.title,
-        description: cls.description ?? null,
+        title: "",
+        description: null,
+        pills: jsonbStringArray(getLegacyClassPills(cls)),
         date: cls.date,
         time: cls.time ?? null,
         location_slug: defaultLocation.slug,
