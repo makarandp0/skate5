@@ -211,7 +211,7 @@ const ClassListDayCards = ({
           <article
             key={skateClass.id}
             className={cn(
-              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all sm:grid-cols-[auto_minmax(0,1fr)_auto]",
               !day.isPast &&
                 "hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0",
               day.isToday &&
@@ -420,6 +420,12 @@ export const ClassList = () => {
       </section>
 
       <section className="space-y-3" aria-label="Class list">
+        {monthClassCount === 0 && (
+          <div className="rounded-md bg-muted/45 px-3 py-8 text-center text-sm text-muted-foreground">
+            No classes this month.
+          </div>
+        )}
+
         {visibleClassListDays.length === 0 && monthClassCount > 0 && (
           <div className="rounded-md bg-muted/45 px-3 py-8 text-center text-sm text-muted-foreground">
             All classes this month are in the past.
