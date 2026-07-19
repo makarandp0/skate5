@@ -22,6 +22,7 @@ export const chatMessageKindSchema = z.enum(["user", "system"]);
 export const locationSchema = z.object({
   slug: z.string(),
   name: z.string(),
+  shortName: z.string(),
   address: z.string(),
   color: z.string(),
   active: z.boolean(),
