@@ -21,11 +21,12 @@ const statusOptions: Array<{ status: ClassStatus; label: string }> = [
 
 const pillSuggestions = [
   "Labor Day Weekend",
-  "Guest Class",
+  "Free classes",
+  "Mothers Day Weekend",
+  "No Classes",
   "No Beginner Class",
   "No Advanced Class",
-  "Makeup Class",
-  "Venue Change",
+  "Depends on Snow",
 ];
 
 const maxClassPills = 8;

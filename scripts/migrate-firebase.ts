@@ -81,12 +81,41 @@ const firebaseGridEntrySchema = z.object({
   instructors: z.union([z.record(z.string(), z.string()), z.array(z.string())]).optional(),
 });
 
+const firebaseChatMessageSchema = z.object({
+  id: z.string().optional(),
+  date: firebaseTimestampSchema,
+  from: z.string().optional(),
+  message: z.string().optional(),
+  messageType: z.enum(["notification", "chat"]).optional(),
+});
+
+const firebaseChatMetaSchema = z.object({
+  chatTitle: z.string().optional(),
+  topicId: z.string().optional(),
+  date: firebaseTimestampSchema,
+});
+
+const firebaseChatsSchema = z.object({
+  messagesByChatId: z
+    .record(z.string(), z.record(z.string(), firebaseChatMessageSchema))
+    .optional()
+    .default({}),
+  metaByChatId: z
+    .record(z.string(), firebaseChatMetaSchema)
+    .optional()
+    .default({}),
+});
+
 const firebaseExportSchema = z.object({
   users: z.record(z.string(), firebaseUserSchema).optional().default({}),
   classes: z.record(z.string(), firebaseClassSchema).optional().default({}),
   signups: z.record(z.string(), z.record(z.string(), firebaseSignupSchema)).optional().default({}),
   badges: z.record(z.string(), firebaseBadgeSchema).optional().default({}),
   grids: z.record(z.string(), z.record(z.string(), firebaseGridEntrySchema)).optional().default({}),
+  chats: firebaseChatsSchema.optional().default({
+    messagesByChatId: {},
+    metaByChatId: {},
+  }),
 });
 
 const firebaseAuthExportUserSchema = z.object({
@@ -106,7 +135,15 @@ const firebaseAuthExportSchema = z.union([
 type FirebaseTimestamp = z.infer<typeof firebaseTimestampSchema>;
 type FirebaseUser = z.infer<typeof firebaseUserSchema>;
 type FirebaseClass = z.infer<typeof firebaseClassSchema>;
+type FirebaseChatMessage = z.infer<typeof firebaseChatMessageSchema>;
 type FirebaseAuthExportUser = z.infer<typeof firebaseAuthExportUserSchema>;
+
+type LegacySystemMessageEntry = {
+  firebaseClassId: string;
+  chatId: string;
+  messageId: string;
+  message: FirebaseChatMessage;
+};
 
 type AuthUserMetadata = {
   uid: string;
@@ -258,6 +295,47 @@ function getUserCreatedAt(user: FirebaseUser): Date | null {
   return null;
 }
 
+function isLegacySystemMessage(message: FirebaseChatMessage): boolean {
+  return (
+    message.messageType === "notification" ||
+    (message.messageType === undefined &&
+      message.message !== undefined &&
+      message.message.includes("RSVPed"))
+  );
+}
+
+function getLegacySystemMessageEntries(
+  data: z.infer<typeof firebaseExportSchema>
+): LegacySystemMessageEntry[] {
+  const classIds = new Set(Object.keys(data.classes));
+  const entries: LegacySystemMessageEntry[] = [];
+
+  for (const [chatId, meta] of Object.entries(data.chats.metaByChatId)) {
+    if (!meta.topicId || !classIds.has(meta.topicId)) {
+      continue;
+    }
+
+    const messages = data.chats.messagesByChatId[chatId] ?? {};
+    for (const [messageId, message] of Object.entries(messages)) {
+      if (isLegacySystemMessage(message)) {
+        entries.push({
+          firebaseClassId: meta.topicId,
+          chatId,
+          messageId,
+          message,
+        });
+      }
+    }
+  }
+
+  return entries.sort((left, right) => {
+    const leftDate = parseFirebaseTimestamp(left.message.date)?.getTime() ?? 0;
+    const rightDate = parseFirebaseTimestamp(right.message.date)?.getTime() ?? 0;
+    if (leftDate !== rightDate) return leftDate - rightDate;
+    return left.messageId.localeCompare(right.messageId);
+  });
+}
+
 // --- Main ---
 
 const args = process.argv.slice(2);
@@ -321,6 +399,7 @@ const gridEntries = Object.entries(data.grids)
       .filter(([, entry]) => entry.classId !== undefined)
       .map(([entryId, entry]) => ({ classId, entryId, ...entry }))
   );
+const systemMessageEntries = getLegacySystemMessageEntries(data);
 
 // Show confirmation
 console.log(`\nTarget: ${maskConnectionString(connectionString)}`);
@@ -330,6 +409,7 @@ console.log(`  Badges:       ${String(badgeEntries.length)}`);
 console.log(`  Classes:      ${String(classEntries.length)}`);
 console.log(`  Signups:      ${String(signupEntries.length)}`);
 console.log(`  Grid entries: ${String(gridEntries.length)}`);
+console.log(`  System msgs:  ${String(systemMessageEntries.length)}`);
 if (authUsersJsonPath) {
   console.log(`  Auth users:   ${String(authUsersByUid.size)} from ${authUsersJsonPath}`);
 }
@@ -562,6 +642,71 @@ await db.transaction().execute(async (trx) => {
   if (skippedGridEntries > 0) {
     console.log(`  ⚠️  Skipped ${String(skippedGridEntries)} grid entries (orphaned class references)`);
   }
+
+  // Phase 6: Class system messages
+  console.log(`Inserting ${String(systemMessageEntries.length)} system messages...`);
+  let skippedSystemMessages = 0;
+  let fallbackSystemMessageSenders = 0;
+  const chatMap = new Map<string, string>();
+
+  for (const entry of systemMessageEntries) {
+    const pgClassId = classMap.get(entry.firebaseClassId);
+    const text = entry.message.message?.trim();
+    if (!pgClassId || !text) {
+      skippedSystemMessages++;
+      continue;
+    }
+
+    let pgChatId = chatMap.get(entry.firebaseClassId);
+    if (!pgChatId) {
+      const legacyMeta = data.chats.metaByChatId[entry.chatId];
+      const createdAt =
+        parseFirebaseTimestamp(legacyMeta?.date) ??
+        parseFirebaseTimestamp(entry.message.date) ??
+        new Date();
+      const chat = await trx
+        .insertInto("chats")
+        .values({
+          title: legacyMeta?.chatTitle ?? "Class chat",
+          topic_id: pgClassId,
+          created_at: createdAt,
+        })
+        .returning(["id"])
+        .executeTakeFirstOrThrow();
+      pgChatId = chat.id;
+      chatMap.set(entry.firebaseClassId, pgChatId);
+    }
+
+    const senderUserId =
+      entry.message.from !== undefined
+        ? uidMap.get(entry.message.from)
+        : undefined;
+    const userId = senderUserId ?? fallbackUserId;
+    if (!senderUserId) {
+      fallbackSystemMessageSenders++;
+    }
+
+    await trx
+      .insertInto("chat_messages")
+      .values({
+        chat_id: pgChatId,
+        user_id: userId,
+        kind: "system",
+        text,
+        created_at: parseFirebaseTimestamp(entry.message.date) ?? new Date(),
+      })
+      .execute();
+  }
+  if (skippedSystemMessages > 0) {
+    console.log(
+      `  ⚠️  Skipped ${String(skippedSystemMessages)} system messages (orphaned class or empty text)`
+    );
+  }
+  if (fallbackSystemMessageSenders > 0) {
+    console.log(
+      `  ⚠️  Used fallback sender for ${String(fallbackSystemMessageSenders)} system messages`
+    );
+  }
 });
 
 console.log(`\n✓ Migration complete!`);
@@ -570,5 +715,6 @@ console.log(`  Badges:       ${String(badgeEntries.length)}`);
 console.log(`  Classes:      ${String(classEntries.length)}`);
 console.log(`  Signups:      ${String(signupEntries.length)}`);
 console.log(`  Grid entries: ${String(gridEntries.length)}`);
+console.log(`  System msgs:  ${String(systemMessageEntries.length)}`);
 
 await db.destroy();
