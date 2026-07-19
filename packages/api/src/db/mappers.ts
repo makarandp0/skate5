@@ -74,6 +74,7 @@ interface ClassRow {
   time: string | null;
   location_slug: string;
   location_name: string;
+  location_short_name: string;
   location_address: string;
   location_color: string;
   location_active: boolean;
@@ -88,6 +89,7 @@ interface ClassRow {
 interface LocationRow {
   slug: string;
   name: string;
+  short_name: string;
   address: string;
   color: string;
   active: boolean;
@@ -168,6 +170,7 @@ export const toLocation = (row: LocationRow): Location => {
   return locationSchema.parse({
     slug: row.slug,
     name: row.name,
+    shortName: row.short_name,
     address: row.address,
     color: row.color,
     active: row.active,
@@ -186,6 +189,7 @@ export const toSkateClass = (row: ClassRow): SkateClass => {
     location: toLocation({
       slug: row.location_slug,
       name: row.location_name,
+      short_name: row.location_short_name,
       address: row.location_address,
       color: row.location_color,
       active: row.location_active,

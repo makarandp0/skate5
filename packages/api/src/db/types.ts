@@ -27,6 +27,7 @@ export interface UsersTable {
 export interface LocationsTable {
   slug: string;
   name: string;
+  short_name: string;
   address: string;
   color: string;
   active: Generated<boolean>;

@@ -135,22 +135,6 @@ const getClassListDays = (
     }));
 };
 
-const getOrderedClassListDays = (
-  days: ClassListDay[],
-  monthDate: Date,
-  today: Date,
-  todayKey: string
-): ClassListDay[] => {
-  if (getMonthKey(monthDate) !== getMonthKey(today)) {
-    return days;
-  }
-
-  return [
-    ...days.filter((day) => day.key >= todayKey),
-    ...days.filter((day) => day.key < todayKey),
-  ];
-};
-
 const getRsvpLabel = (rsvp: RsvpStatus): string => {
   switch (rsvp) {
     case "yes":
@@ -198,8 +182,8 @@ const getRsvpClassName = (rsvp: RsvpStatus): string => {
   }
 };
 
-const getClassCountLabel = (count: number): string => {
-  return count === 1 ? "1 class" : `${String(count)} classes`;
+const countClassesInDays = (days: ClassListDay[]): number => {
+  return days.reduce((total, day) => total + day.classes.length, 0);
 };
 
 const ClassListDayCards = ({
@@ -212,20 +196,27 @@ const ClassListDayCards = ({
   return (
     <>
       {day.classes.map((skateClass) => {
-        const canRsvp = skateClass.status === "published";
+        const canRsvp = !day.isPast && skateClass.status === "published";
         const showStatus = shouldShowClassStatus(
           skateClass.status,
           canManageClasses
         );
+        const actionLabel = day.isPast
+          ? "View"
+          : canRsvp
+            ? getRsvpActionLabel(skateClass.currentUserRsvp)
+            : "Open";
 
         return (
           <article
             key={skateClass.id}
             className={cn(
-              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              !day.isPast &&
+                "hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0",
               day.isToday &&
                 "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
-              day.isPast && "bg-muted/35 text-muted-foreground"
+              day.isPast && "bg-muted/30 text-muted-foreground opacity-85"
             )}
           >
             <Link
@@ -235,7 +226,10 @@ const ClassListDayCards = ({
             />
             <ClassIcon
               skateClass={skateClass}
-              className="pointer-events-none relative z-10 min-h-32 rounded-lg"
+              className={cn(
+                "pointer-events-none relative z-10 min-h-32 rounded-lg",
+                day.isPast && "grayscale"
+              )}
             />
 
             <div className="pointer-events-none relative z-10 min-w-0 self-center">
@@ -247,6 +241,11 @@ const ClassListDayCards = ({
                 {day.isToday && (
                   <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
                     Today
+                  </span>
+                )}
+                {day.isPast && (
+                  <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">
+                    Past
                   </span>
                 )}
               </div>
@@ -264,17 +263,22 @@ const ClassListDayCards = ({
               {canRsvp && (
                 <span
                   className={cn(
-                    "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold",
+                    "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm shadow-slate-900/5",
                     getRsvpClassName(skateClass.currentUserRsvp)
                   )}
                 >
                   {getRsvpLabel(skateClass.currentUserRsvp)}
                 </span>
               )}
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors group-hover/class:bg-primary group-hover/class:text-primary-foreground">
-                {canRsvp
-                  ? getRsvpActionLabel(skateClass.currentUserRsvp)
-                  : "Open"}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                  day.isPast
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-primary/10 text-primary group-hover/class:bg-primary group-hover/class:text-primary-foreground"
+                )}
+              >
+                {actionLabel}
                 <ArrowRight size={13} />
               </span>
             </div>
@@ -295,6 +299,7 @@ export const ClassList = () => {
     () => getInitialMonthDate(searchParams.get("month"), today)
   );
   const [loading, setLoading] = useState(true);
+  const [showPastClasses, setShowPastClasses] = useState(false);
 
   useEffect(() => {
     api
@@ -311,13 +316,18 @@ export const ClassList = () => {
   const classesByDate = useMemo(() => groupClassesByDate(classes), [classes]);
   const countsByMonth = useMemo(() => countClassesByMonth(classes), [classes]);
   const classListDays = useMemo(() => {
-    return getOrderedClassListDays(
-      getClassListDays(monthDate, todayKey, classesByDate),
-      monthDate,
-      today,
-      todayKey
-    );
-  }, [classesByDate, monthDate, today, todayKey]);
+    return getClassListDays(monthDate, todayKey, classesByDate);
+  }, [classesByDate, monthDate, todayKey]);
+  const pastClassCount = useMemo(() => {
+    return countClassesInDays(classListDays.filter((day) => day.isPast));
+  }, [classListDays]);
+  const visibleClassListDays = useMemo(() => {
+    if (showPastClasses) {
+      return classListDays;
+    }
+
+    return classListDays.filter((day) => !day.isPast);
+  }, [classListDays, showPastClasses]);
 
   const monthClassCount = countsByMonth.get(getMonthKey(monthDate)) ?? 0;
   const canManageClasses = profile ? canAssumeRole(profile.role, "admin") : false;
@@ -381,32 +391,42 @@ export const ClassList = () => {
           </Button>
         </div>
 
-        {canManageClasses && (
-          <div className="mt-4 flex justify-center">
-            <Link
-              to={`/classes/new?date=${todayKey}`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background/70 px-4 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/70 active:translate-y-0"
-            >
-              <CalendarPlus size={16} />
-              Create class
-            </Link>
+        {(canManageClasses || pastClassCount > 0) && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            {canManageClasses && (
+              <Link
+                to={`/classes/new?date=${todayKey}`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background/70 px-4 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/70 active:translate-y-0"
+              >
+                <CalendarPlus size={16} />
+                Create class
+              </Link>
+            )}
+            {pastClassCount > 0 && (
+              <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-border bg-background/70 px-4 text-sm font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/70 active:translate-y-0">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={showPastClasses}
+                  onChange={(event) => {
+                    setShowPastClasses(event.currentTarget.checked);
+                  }}
+                />
+                Show past
+              </label>
+            )}
           </div>
         )}
       </section>
 
       <section className="space-y-3" aria-label="Class list">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            {monthClassCount > 0
-              ? `${getClassCountLabel(monthClassCount)} this month`
-              : "No classes this month"}
-          </p>
-          <p className="text-xs font-medium text-muted-foreground">
-            Upcoming dates appear first.
-          </p>
-        </div>
+        {visibleClassListDays.length === 0 && monthClassCount > 0 && (
+          <div className="rounded-md bg-muted/45 px-3 py-8 text-center text-sm text-muted-foreground">
+            All classes this month are in the past.
+          </div>
+        )}
 
-        {classListDays.map((day) => (
+        {visibleClassListDays.map((day) => (
           <ClassListDayCards
             key={day.key}
             day={day}

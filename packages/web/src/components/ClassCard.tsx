@@ -136,6 +136,11 @@ export const getClassLinkLabel = (skateClass: SkateClass): string => {
   )}`;
 };
 
+export const getClassLocationAccentLabel = (shortName: string): string => {
+  const label = shortName.trim();
+  return label.length > 0 ? label : "Location";
+};
+
 export const LocationBadge = ({
   location,
   showAddress = false,
@@ -222,14 +227,29 @@ export const ClassIcon = ({
   return (
     <div
       className={cn(
-        "flex flex-shrink-0 flex-col overflow-hidden rounded-lg border-2 border-border bg-calendar-paper text-calendar-paper-foreground shadow-md shadow-slate-900/10",
+        "relative flex flex-shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-calendar-paper pl-6 text-calendar-paper-foreground shadow-md shadow-slate-900/10 ring-1 ring-black/5",
         large ? "w-44" : "w-36",
         className
       )}
     >
       <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 flex w-6 items-center justify-center overflow-hidden text-white"
+        style={{ backgroundColor: skateClass.location.color }}
+      >
+        <span
+          className={cn(
+            "max-h-full whitespace-nowrap font-black uppercase tracking-[0.24em] [writing-mode:vertical-rl]",
+            large ? "text-[11px]" : "text-[9px]"
+          )}
+        >
+          {getClassLocationAccentLabel(skateClass.location.shortName)}
+        </span>
+      </div>
+      <div
+        style={{ backgroundColor: skateClass.location.color }}
         className={cn(
-          "bg-primary px-2 text-center font-bold uppercase tracking-[0.16em] text-primary-foreground",
+          "px-2 text-center font-black uppercase tracking-[0.18em] text-white shadow-sm shadow-black/10 opacity-90",
           large ? "py-2 text-xs" : "py-1.5 text-[10px]"
         )}
       >
@@ -260,29 +280,11 @@ export const ClassIcon = ({
       </div>
       <div
         className={cn(
-          "space-y-1.5 border-t border-calendar-footer-border bg-calendar-footer px-2 font-semibold text-calendar-footer-foreground",
+          "border-t border-calendar-footer-border bg-calendar-footer px-2 font-semibold text-calendar-footer-foreground",
           large ? "py-2 text-xs" : "py-1.5 text-[11px]"
         )}
       >
-        <div
-          className="flex min-w-0 items-start gap-1.5 px-1.5 text-calendar-paper-foreground"
-          title={skateClass.location.address}
-        >
-          <MapPin
-            size={large ? 13 : 11}
-            className="mt-0.5 shrink-0"
-            style={{ color: skateClass.location.color }}
-          />
-          <span
-            className={cn(
-              "min-w-0 break-words font-extrabold leading-tight",
-              large ? "text-sm" : "text-xs"
-            )}
-          >
-            {skateClass.location.name}
-          </span>
-        </div>
-        <div className="flex min-w-0 items-center gap-1.5 px-1.5">
+        <div className="flex min-w-0 items-center justify-center gap-1.5 px-1.5">
           <Clock size={large ? 13 : 11} className="shrink-0" />
           <span className="truncate">{timeLabel}</span>
         </div>
