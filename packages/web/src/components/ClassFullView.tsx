@@ -26,8 +26,8 @@ import {
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
+  ClassPills,
   ClassIcon,
-  getClassDisplayTitle,
   getClassDateKey,
   getClassSummaryLabel,
   LocationBadge,
@@ -173,25 +173,22 @@ const RsvpButton = ({
 
 type ClassFullViewProps = {
   skateClass: SkateClass;
-  headingLevel?: "h1" | "h2";
   showDateTile?: boolean;
   onClassUpdated?: (skateClass: SkateClass) => void;
 };
 
 const getClassFormValues = (skateClass: SkateClass): ClassFormValues => {
   return {
-    title: skateClass.title,
     date: getClassDateKey(skateClass.date),
     time: skateClass.time ?? "",
     locationSlug: skateClass.locationSlug,
-    description: skateClass.description ?? "",
+    pills: skateClass.pills,
     status: skateClass.status,
   };
 };
 
 export const ClassFullView = ({
   skateClass,
-  headingLevel = "h2",
   showDateTile = true,
   onClassUpdated,
 }: ClassFullViewProps) => {
@@ -232,12 +229,11 @@ export const ClassFullView = ({
     setAdminRsvpError(null);
   }, [
     rawDate,
-    skateClass.description,
     skateClass.id,
     skateClass.locationSlug,
+    skateClass.pills,
     skateClass.status,
     skateClass.time,
-    skateClass.title,
   ]);
 
   useEffect(() => {
@@ -358,10 +354,9 @@ export const ClassFullView = ({
 
     try {
       const body = updateClassSchema.parse({
-        title: editValues.title.trim(),
         time: editValues.time.trim() || undefined,
         locationSlug: editValues.locationSlug,
-        description: editValues.description.trim() || undefined,
+        pills: editValues.pills,
         status: classStatusSchema.parse(editValues.status),
       });
       const updated = await api.updateClass({
@@ -383,7 +378,6 @@ export const ClassFullView = ({
     void handleUpdate();
   };
 
-  const displayTitle = getClassDisplayTitle(skateClass);
   const summaryLabel = getClassSummaryLabel(skateClass);
   const showStatus = shouldShowClassStatus(skateClass.status, canEdit);
   const selectedTab = attendanceTabs.find(
@@ -394,7 +388,6 @@ export const ClassFullView = ({
     attendanceCounts.maybe +
     attendanceCounts.no +
     attendanceCounts.none;
-  const headingClassName = "text-2xl font-black leading-tight sm:text-3xl";
   const canManageAttendance = canEdit;
 
   return (
@@ -498,14 +491,10 @@ export const ClassFullView = ({
                   )}
                 </div>
               </div>
-              {headingLevel === "h1" ? (
-                <h1 className={headingClassName}>{displayTitle}</h1>
-              ) : (
-                <h2 className={headingClassName}>{displayTitle}</h2>
-              )}
-              <p className="mt-1 text-sm font-medium text-muted-foreground">
+              <p className="mt-2 text-sm font-medium text-muted-foreground">
                 {summaryLabel}
               </p>
+              <ClassPills pills={skateClass.pills} className="mt-3" />
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-muted-foreground">
                 <LocationBadge
                   location={skateClass.location}
@@ -513,11 +502,6 @@ export const ClassFullView = ({
                   openInMaps
                 />
               </div>
-              {skateClass.description && (
-                <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-foreground/80">
-                  {skateClass.description}
-                </p>
-              )}
             </div>
           </div>
         )}

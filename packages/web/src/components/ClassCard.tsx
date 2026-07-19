@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock, ExternalLink, MapPin } from "lucide-react";
+import { ArrowRight, Clock, ExternalLink, MapPin, Tag } from "lucide-react";
 import { Card } from "./ui/Card.js";
 import { cn } from "../lib/utils.js";
 import type { Location, SkateClass } from "@skate5/shared";
@@ -93,31 +93,6 @@ export const shouldShowClassStatus = (
   }
 };
 
-export const getClassDefaultTitle = (
-  skateClass: Pick<SkateClass, "date" | "location">
-): string => {
-  const date = getClassDate(skateClass.date);
-  const locationName = skateClass.location.name.trim();
-  const locationLabel = locationName.length > 0 ? locationName : "class";
-
-  if (Number.isNaN(date.getTime())) {
-    return `Skate at ${locationLabel}`;
-  }
-
-  const dateLabel = date.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
-  return `${dateLabel} Skate at ${locationLabel}`;
-};
-
-export const getClassDisplayTitle = (skateClass: SkateClass): string => {
-  const title = skateClass.title.trim();
-  return title.length > 0 ? title : getClassDefaultTitle(skateClass);
-};
-
 export const getClassSummaryLabel = (skateClass: SkateClass): string => {
   const dateParts = getClassDateParts(skateClass.date);
 
@@ -131,14 +106,39 @@ export const getClassSummaryLabel = (skateClass: SkateClass): string => {
 };
 
 export const getClassLinkLabel = (skateClass: SkateClass): string => {
-  return `Open ${getClassDisplayTitle(skateClass)} - ${getClassSummaryLabel(
-    skateClass
-  )}`;
+  return `Open class - ${getClassSummaryLabel(skateClass)}`;
 };
 
 export const getClassLocationAccentLabel = (shortName: string): string => {
   const label = shortName.trim();
   return label.length > 0 ? label : "Location";
+};
+
+export const ClassPills = ({
+  pills,
+  className,
+}: {
+  pills: string[];
+  className?: string;
+}) => {
+  if (pills.length === 0) return null;
+
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {pills.map((pill) => (
+        <span
+          key={pill}
+          className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 text-xs font-extrabold text-emerald-950 shadow-sm shadow-slate-900/5 dark:border-emerald-300/45 dark:bg-emerald-300/15 dark:text-emerald-50"
+        >
+          <Tag
+            size={12}
+            className="shrink-0 text-emerald-700 dark:text-emerald-200"
+          />
+          <span className="truncate">{pill}</span>
+        </span>
+      ))}
+    </div>
+  );
 };
 
 export const LocationBadge = ({
@@ -312,19 +312,12 @@ export const ClassCard = ({
 
         <div className="flex min-w-0 flex-1 flex-col justify-between py-4 pr-4">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="min-w-0 text-base font-semibold leading-snug">
-              {getClassDisplayTitle(skateClass)}
-            </h3>
             {shouldShowClassStatus(skateClass.status, canManageClasses) && (
               <StatusBadge status={skateClass.status} />
             )}
           </div>
 
-          {skateClass.description && (
-            <p className="mt-2 line-clamp-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {skateClass.description}
-            </p>
-          )}
+          <ClassPills pills={skateClass.pills} className="mt-2" />
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
             <LocationBadge location={skateClass.location} />

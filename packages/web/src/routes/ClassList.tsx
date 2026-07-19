@@ -10,8 +10,8 @@ import { canAssumeRole } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
+  ClassPills,
   ClassIcon,
-  getClassDisplayTitle,
   getClassDateKey,
   getClassLinkLabel,
   StatusBadge,
@@ -81,7 +81,9 @@ const compareClassesByDate = (
   const rightTime = getSortableDateTime(right.date);
 
   if (leftTime === rightTime) {
-    return left.title.localeCompare(right.title);
+    return [left.time ?? "", left.location.name].join(" ").localeCompare(
+      [right.time ?? "", right.location.name].join(" ")
+    );
   }
 
   return leftTime < rightTime ? -1 : 1;
@@ -206,6 +208,8 @@ const ClassListDayCards = ({
           : canRsvp
             ? getRsvpActionLabel(skateClass.currentUserRsvp)
             : "Open";
+        const showCurrentRsvp =
+          canRsvp && skateClass.currentUserRsvp !== "none";
 
         return (
           <article
@@ -234,9 +238,6 @@ const ClassListDayCards = ({
 
             <div className="pointer-events-none relative z-10 min-w-0 self-center">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="min-w-0 text-base font-bold leading-snug">
-                  {getClassDisplayTitle(skateClass)}
-                </h3>
                 {showStatus && <StatusBadge status={skateClass.status} />}
                 {day.isToday && (
                   <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
@@ -250,17 +251,11 @@ const ClassListDayCards = ({
                 )}
               </div>
 
-              {skateClass.description && (
-                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span className="line-clamp-1 min-w-0">
-                    {skateClass.description}
-                  </span>
-                </div>
-              )}
+              <ClassPills pills={skateClass.pills} className="mt-2" />
             </div>
 
             <div className="pointer-events-none relative z-10 col-span-2 flex flex-wrap items-center gap-2 self-center sm:col-span-1 sm:justify-end">
-              {canRsvp && (
+              {showCurrentRsvp && (
                 <span
                   className={cn(
                     "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm shadow-slate-900/5",

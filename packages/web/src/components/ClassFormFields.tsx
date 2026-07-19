@@ -1,15 +1,15 @@
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Clock, MapPin, Plus, Tag, X } from "lucide-react";
 import { ClassIcon } from "./ClassCard.js";
 import { Skeleton } from "./ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
 import type { ClassStatus, Location } from "@skate5/shared";
 
 export type ClassFormValues = {
-  title: string;
   date: string;
   time: string;
   locationSlug: string;
-  description: string;
+  pills: string[];
   status: ClassStatus;
 };
 
@@ -18,6 +18,34 @@ const statusOptions: Array<{ status: ClassStatus; label: string }> = [
   { status: "published", label: "Published" },
   { status: "cancelled", label: "Cancelled" },
 ];
+
+const pillSuggestions = [
+  "Labor Day Weekend",
+  "Guest Class",
+  "No Beginner Class",
+  "No Advanced Class",
+  "Makeup Class",
+  "Venue Change",
+];
+
+const maxClassPills = 8;
+
+const normalizePill = (value: string): string => {
+  return value.trim().replace(/\s+/g, " ");
+};
+
+const addPill = (pills: string[], value: string): string[] => {
+  if (pills.length >= maxClassPills) return pills;
+
+  const pill = normalizePill(value);
+  if (!pill) return pills;
+
+  const exists = pills.some(
+    (existing) => existing.toLocaleLowerCase() === pill.toLocaleLowerCase()
+  );
+
+  return exists ? pills : [...pills, pill];
+};
 
 type ClassFormFieldsProps = {
   values: ClassFormValues;
@@ -41,9 +69,16 @@ export const ClassFormFields = ({
   const selectedLocation =
     locations.find((location) => location.slug === values.locationSlug) ??
     previewLocation;
+  const [customPill, setCustomPill] = useState("");
 
   const updateValues = (nextValues: Partial<ClassFormValues>): void => {
     onValuesChange({ ...values, ...nextValues });
+  };
+
+  const handleAddCustomPill = (): void => {
+    const nextPills = addPill(values.pills, customPill);
+    updateValues({ pills: nextPills });
+    setCustomPill("");
   };
 
   return (
@@ -87,24 +122,9 @@ export const ClassFormFields = ({
           })}
         </div>
 
-        <label className="sr-only" htmlFor={`${idPrefix}-title`}>
-          Title
-        </label>
-        <input
-          id={`${idPrefix}-title`}
-          value={values.title}
-          onChange={(event) => {
-            updateValues({ title: event.target.value });
-          }}
-          required
-          maxLength={120}
-          placeholder="Class title"
-          className="w-full rounded-md border border-border bg-background/80 px-3 py-2 text-2xl font-black leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-3xl"
-        />
-
         <div
           className={cn(
-            "mt-3 grid gap-3",
+            "grid gap-3",
             allowDateEdit
               ? "sm:grid-cols-[minmax(0,11rem)_minmax(0,14rem)_minmax(0,18rem)]"
               : "sm:grid-cols-[minmax(0,14rem)_minmax(0,18rem)]"
@@ -166,19 +186,90 @@ export const ClassFormFields = ({
           </label>
         </div>
 
-        <label className="sr-only" htmlFor={`${idPrefix}-description`}>
-          Description
-        </label>
-        <textarea
-          id={`${idPrefix}-description`}
-          value={values.description}
-          onChange={(event) => {
-            updateValues({ description: event.target.value });
-          }}
-          rows={5}
-          placeholder="Add the class description, notes, or focus for the session."
-          className="mt-4 min-h-32 w-full resize-y rounded-md border border-border bg-background/80 px-3 py-2 text-sm leading-relaxed text-foreground/80 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        />
+        <div className="mt-4 space-y-3 rounded-md border border-border bg-background/60 p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+            <Tag size={14} />
+            Class pills
+          </div>
+
+          {values.pills.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {values.pills.map((pill) => (
+                <button
+                  key={pill}
+                  type="button"
+                  onClick={() => {
+                    updateValues({
+                      pills: values.pills.filter((current) => current !== pill),
+                    });
+                  }}
+                  className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 text-xs font-extrabold text-emerald-950 shadow-sm shadow-slate-900/5 transition-colors hover:bg-emerald-100 dark:border-emerald-300/45 dark:bg-emerald-300/15 dark:text-emerald-50 dark:hover:bg-emerald-300/25"
+                >
+                  <Tag
+                    size={12}
+                    className="shrink-0 text-emerald-700 dark:text-emerald-200"
+                  />
+                  <span className="truncate">{pill}</span>
+                  <X size={13} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Regular classes do not need pills.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {pillSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => {
+                  updateValues({
+                    pills: addPill(values.pills, suggestion),
+                  });
+                }}
+                disabled={values.pills.some(
+                  (pill) =>
+                    pill.toLocaleLowerCase() ===
+                    suggestion.toLocaleLowerCase()
+                ) || values.pills.length >= maxClassPills}
+                className="inline-flex min-h-8 items-center rounded-full border border-border bg-background/70 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/70 disabled:opacity-45"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="sr-only" htmlFor={`${idPrefix}-custom-pill`}>
+              Custom pill
+            </label>
+            <input
+              id={`${idPrefix}-custom-pill`}
+              value={customPill}
+              onChange={(event) => {
+                setCustomPill(event.target.value);
+              }}
+              maxLength={40}
+              placeholder="Custom pill"
+              className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background/80 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomPill}
+              disabled={
+                !normalizePill(customPill) ||
+                values.pills.length >= maxClassPills
+              }
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background/70 px-4 text-sm font-medium transition-colors hover:bg-muted/70 disabled:opacity-50"
+            >
+              <Plus size={16} />
+              Add
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

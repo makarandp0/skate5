@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, LoaderCircle, Save } from "lucide-react";
 import { createClassSchema, classStatusSchema } from "@skate5/shared";
 import { api } from "../lib/api.js";
-import { getClassDefaultTitle } from "../components/ClassCard.js";
 import {
   ClassFormFields,
   type ClassFormValues,
@@ -26,26 +25,15 @@ export const ClassCreate = () => {
   const navigate = useNavigate();
   const initialDate = searchParams.get("date") ?? toDateKey(new Date());
   const [formValues, setFormValues] = useState<ClassFormValues>({
-    title: "",
     date: initialDate,
     time: "",
     locationSlug: "",
-    description: "",
+    pills: [],
     status: "draft",
   });
-  const [customTitle, setCustomTitle] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const selectedLocation = locations.find(
-    (location) => location.slug === formValues.locationSlug
-  );
-  const defaultTitle = selectedLocation
-    ? getClassDefaultTitle({
-        date: formValues.date,
-        location: selectedLocation,
-      })
-    : "Skate class";
   const backDate = dateKeyPattern.test(formValues.date)
     ? formValues.date
     : toDateKey(new Date());
@@ -67,35 +55,16 @@ export const ClassCreate = () => {
       });
   }, []);
 
-  useEffect(() => {
-    if (customTitle) return;
-
-    setFormValues((current) =>
-      current.title === defaultTitle
-        ? current
-        : { ...current, title: defaultTitle }
-    );
-  }, [customTitle, defaultTitle]);
-
-  const handleFormValuesChange = (nextValues: ClassFormValues): void => {
-    if (nextValues.title !== formValues.title) {
-      setCustomTitle(true);
-    }
-
-    setFormValues(nextValues);
-  };
-
   const saveClass = async (): Promise<void> => {
     setSaving(true);
     setError(null);
 
     try {
       const body = createClassSchema.parse({
-        title: formValues.title.trim(),
         date: formValues.date,
         time: formValues.time.trim() || undefined,
         locationSlug: formValues.locationSlug,
-        description: formValues.description.trim() || undefined,
+        pills: formValues.pills,
         status: classStatusSchema.parse(formValues.status),
       });
       const skateClass = await api.createClass({ body });
@@ -126,7 +95,7 @@ export const ClassCreate = () => {
         <ClassFormFields
           values={formValues}
           locations={locations}
-          onValuesChange={handleFormValuesChange}
+          onValuesChange={setFormValues}
           idPrefix="class-create"
           allowDateEdit
         />

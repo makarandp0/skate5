@@ -248,6 +248,7 @@ const getClassById = async (classId: string): Promise<SkateClass | null> => {
       "classes.id as id",
       "classes.title as title",
       "classes.description as description",
+      "classes.pills as pills",
       "classes.date as date",
       "classes.time as time",
       "classes.location_slug as location_slug",
@@ -342,7 +343,7 @@ const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
 
   const skateClass = await db
     .selectFrom("classes")
-    .select(["title"])
+    .select(["id"])
     .where("id", "=", classId)
     .executeTakeFirst();
 
@@ -353,7 +354,7 @@ const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
   const created = await db
     .insertInto("chats")
     .values({
-      title: skateClass.title,
+      title: "Class chat",
       topic_id: classId,
     })
     .onConflict((oc) =>
@@ -599,6 +600,7 @@ const getClassGridResponse = async ({
       "classes.id as id",
       "classes.title as title",
       "classes.description as description",
+      "classes.pills as pills",
       "classes.date as date",
       "classes.time as time",
       "classes.location_slug as location_slug",
@@ -832,6 +834,7 @@ const handlers: RouteHandlers = {
         "classes.id as id",
         "classes.title as title",
         "classes.description as description",
+        "classes.pills as pills",
         "classes.date as date",
         "classes.time as time",
         "classes.location_slug as location_slug",
@@ -879,8 +882,9 @@ const handlers: RouteHandlers = {
     const row = await db
       .insertInto("classes")
       .values({
-        title: body.title,
-        description: body.description ?? null,
+        title: "",
+        description: null,
+        pills: jsonbStringArray(body.pills),
         date: body.date,
         time: body.time ?? null,
         location_slug: body.locationSlug,
@@ -915,8 +919,9 @@ const handlers: RouteHandlers = {
     const row = await db
       .updateTable("classes")
       .set({
-        title: body.title,
-        description: body.description ?? null,
+        title: "",
+        description: null,
+        pills: jsonbStringArray(body.pills),
         time: body.time ?? null,
         location_slug: body.locationSlug,
         status: body.status,

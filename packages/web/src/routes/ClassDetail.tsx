@@ -1,24 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { api } from "../lib/api.js";
-import { getClassDateKey } from "../components/ClassCard.js";
+import {
+  getClassDateKey,
+  getClassSummaryLabel,
+} from "../components/ClassCard.js";
 import { ClassFullView } from "../components/ClassFullView.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
-import type { SkateClass } from "@skate5/shared";
+import type { ClassListItem, SkateClass } from "@skate5/shared";
+
+const compareClassesBySchedule = (
+  left: Pick<SkateClass, "date" | "time" | "location">,
+  right: Pick<SkateClass, "date" | "time" | "location">
+): number => {
+  const dateCompare = getClassDateKey(left.date).localeCompare(
+    getClassDateKey(right.date)
+  );
+
+  if (dateCompare !== 0) {
+    return dateCompare;
+  }
+
+  return [left.time ?? "", left.location.name].join(" ").localeCompare(
+    [right.time ?? "", right.location.name].join(" ")
+  );
+};
+
+const getNextClass = (
+  currentClass: SkateClass,
+  classes: ClassListItem[]
+): ClassListItem | null => {
+  const sortedClasses = [...classes].sort(compareClassesBySchedule);
+  const currentIndex = sortedClasses.findIndex(
+    (skateClass) => skateClass.id === currentClass.id
+  );
+
+  if (currentIndex >= 0) {
+    return sortedClasses[currentIndex + 1] ?? null;
+  }
+
+  return (
+    sortedClasses.find(
+      (skateClass) => compareClassesBySchedule(skateClass, currentClass) > 0
+    ) ?? null
+  );
+};
 
 export const ClassDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [skateClass, setSkateClass] = useState<SkateClass | null>(null);
+  const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const nextClass = useMemo(
+    () => (skateClass ? getNextClass(skateClass, classes) : null),
+    [classes, skateClass]
+  );
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    api
-      .getClass({ params: { id } })
-      .then((cls) => {
+    Promise.all([api.getClass({ params: { id } }), api.getClasses({})])
+      .then(([cls, classList]) => {
         setSkateClass(cls);
+        setClasses(classList);
         setLoading(false);
       })
       .catch(() => {
@@ -52,17 +97,30 @@ export const ClassDetail = () => {
 
   return (
     <div className="space-y-6">
-      <Link
-        to={calendarUrl}
-        className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft size={16} />
-        Calendar
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to={calendarUrl}
+          className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={16} />
+          Calendar
+        </Link>
+
+        {nextClass && (
+          <Link
+            to={`/classes/${nextClass.id}`}
+            aria-label={`Open next class: ${getClassSummaryLabel(nextClass)}`}
+            title={getClassSummaryLabel(nextClass)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/90 px-3 py-2 text-sm font-bold text-foreground shadow-sm shadow-slate-900/5 transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Next class
+            <ArrowRight size={16} />
+          </Link>
+        )}
+      </div>
 
       <ClassFullView
         skateClass={skateClass}
-        headingLevel="h1"
         onClassUpdated={setSkateClass}
       />
     </div>
