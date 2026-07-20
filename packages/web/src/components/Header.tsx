@@ -63,8 +63,6 @@ export const Header = () => {
           to: "/login",
           icon: LogIn,
           label: "Sign in",
-          showInTopNav: false,
-          showInBottomNav: false,
         },
       ];
   const showRoleSwitcher = profile && availableRoles.length > 1;
@@ -123,28 +121,6 @@ export const Header = () => {
             </span>
           </span>
         </Link>
-
-        <nav className="hidden items-center gap-1 rounded-lg border border-border/70 bg-background/60 p-1 sm:flex">
-          {visibleNavItems
-            .filter((item) => item.showInTopNav)
-            .map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                  )
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
-        </nav>
 
         <div className="relative flex items-center gap-2" ref={menuRef}>
           {roleSelect(

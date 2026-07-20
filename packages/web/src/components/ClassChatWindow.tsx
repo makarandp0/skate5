@@ -18,11 +18,14 @@ type ClassChatWindowProps = {
   skateClass: SkateClass;
 };
 
-const formatMessageTime = (value: string): string => {
+const formatMessageTimestamp = (value: string): string => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
@@ -119,7 +122,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
         ) : messages.length > 0 ? (
           messages.map((message) => {
             const fromCurrentUser = profile?.id === message.userId;
-            const time = formatMessageTime(message.createdAt);
+            const timestamp = formatMessageTimestamp(message.createdAt);
 
             if (message.kind === "system") {
               return (
@@ -130,7 +133,9 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
                   <Info size={14} className="mt-0.5 shrink-0 text-primary" />
                   <div className="min-w-0">
                     <p className="break-words">{message.text}</p>
-                    {time && <p className="mt-1 font-medium">{time}</p>}
+                    {timestamp && (
+                      <p className="mt-1 font-medium">{timestamp}</p>
+                    )}
                   </div>
                 </div>
               );
@@ -165,7 +170,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
                   <p className="break-words text-sm leading-relaxed">
                     {message.text}
                   </p>
-                  {time && (
+                  {timestamp && (
                     <p
                       className={cn(
                         "mt-1 text-right text-[11px] font-medium",
@@ -174,7 +179,7 @@ export const ClassChatWindow = ({ skateClass }: ClassChatWindowProps) => {
                           : "text-muted-foreground"
                       )}
                     >
-                      {time}
+                      {timestamp}
                     </p>
                   )}
                 </div>
