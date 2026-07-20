@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Check,
   CheckCircle2,
   Pencil,
@@ -29,6 +31,14 @@ type DraftUserChange = {
   displayName: string;
   photoUrl: string;
   role: ManageableUserRole | null;
+};
+
+type UserSortKey = "lastLoginAt" | "createdAt";
+type SortDirection = "asc" | "desc";
+
+type UserSort = {
+  key: UserSortKey | null;
+  direction: SortDirection;
 };
 
 const formatDate = (value: string): string => {
@@ -85,6 +95,87 @@ const getManageableRole = (role: UserRole): ManageableUserRole | null => {
 const getNormalizedPhotoUrl = (value: string): string | null => {
   const trimmedValue = value.trim();
   return trimmedValue.length > 0 ? trimmedValue : null;
+};
+
+const compareUsersByIdentity = (
+  leftUser: ManagedUser,
+  rightUser: ManagedUser
+): number => {
+  const displayNameComparison = leftUser.displayName.localeCompare(
+    rightUser.displayName,
+    undefined,
+    { sensitivity: "base" }
+  );
+  if (displayNameComparison !== 0) return displayNameComparison;
+
+  return leftUser.email.localeCompare(rightUser.email, undefined, {
+    sensitivity: "base",
+  });
+};
+
+const compareUsersByDate = (
+  leftUser: ManagedUser,
+  rightUser: ManagedUser,
+  key: UserSortKey,
+  direction: SortDirection
+): number => {
+  const leftValue = leftUser[key];
+  const rightValue = rightUser[key];
+
+  if (leftValue === null && rightValue === null) {
+    return compareUsersByIdentity(leftUser, rightUser);
+  }
+
+  if (leftValue === null) return 1;
+  if (rightValue === null) return -1;
+
+  const leftTimestamp = new Date(leftValue).getTime();
+  const rightTimestamp = new Date(rightValue).getTime();
+
+  if (leftTimestamp === rightTimestamp) {
+    return compareUsersByIdentity(leftUser, rightUser);
+  }
+
+  return direction === "asc"
+    ? leftTimestamp - rightTimestamp
+    : rightTimestamp - leftTimestamp;
+};
+
+const getNextSort = (
+  currentSort: UserSort,
+  nextKey: UserSortKey
+): UserSort => {
+  if (currentSort.key !== nextKey) {
+    return { key: nextKey, direction: "desc" };
+  }
+
+  if (currentSort.direction === "desc") {
+    return { key: nextKey, direction: "asc" };
+  }
+
+  return { key: null, direction: "desc" };
+};
+
+const getSortSelectValue = (sort: UserSort): string => {
+  if (sort.key === null) return "default";
+  return `${sort.key}:${sort.direction}`;
+};
+
+const parseSortSelectValue = (value: string): UserSort => {
+  switch (value) {
+    case "default":
+      return { key: null, direction: "desc" };
+    case "lastLoginAt:desc":
+      return { key: "lastLoginAt", direction: "desc" };
+    case "lastLoginAt:asc":
+      return { key: "lastLoginAt", direction: "asc" };
+    case "createdAt:desc":
+      return { key: "createdAt", direction: "desc" };
+    case "createdAt:asc":
+      return { key: "createdAt", direction: "asc" };
+    default:
+      return { key: null, direction: "desc" };
+  }
 };
 
 const getUserUpdateInput = (
@@ -234,10 +325,51 @@ const UserEditForm = ({
   );
 };
 
+const SortableHeader = ({
+  label,
+  sort,
+  sortKey,
+  onToggle,
+}: {
+  label: string;
+  sort: UserSort;
+  sortKey: UserSortKey;
+  onToggle: (sortKey: UserSortKey) => void;
+}) => {
+  const active = sort.key === sortKey;
+  const ariaSort = active
+    ? sort.direction === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+
+  return (
+    <th aria-sort={ariaSort} className="px-3 pb-2 text-right font-semibold">
+      <button
+        type="button"
+        onClick={() => {
+          onToggle(sortKey);
+        }}
+        className="ml-auto inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span>{label}</span>
+        {active ? (
+          sort.direction === "asc" ? (
+            <ArrowUp size={14} className="shrink-0" />
+          ) : (
+            <ArrowDown size={14} className="shrink-0" />
+          )
+        ) : null}
+      </button>
+    </th>
+  );
+};
+
 export const Users = () => {
   const { profile } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<UserSort>({ key: null, direction: "desc" });
   const [loading, setLoading] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -280,6 +412,15 @@ export const Users = () => {
       );
     });
   }, [query, users]);
+
+  const displayedUsers = useMemo(() => {
+    if (sort.key === null) return filteredUsers;
+    const sortKey = sort.key;
+
+    return [...filteredUsers].sort((leftUser, rightUser) =>
+      compareUsersByDate(leftUser, rightUser, sortKey, sort.direction)
+    );
+  }, [filteredUsers, sort]);
 
   const updateUser = async (
     user: ManagedUser,
@@ -376,23 +517,55 @@ export const Users = () => {
           />
         </label>
 
+        <div className="flex items-center justify-end">
+          <label className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background/80 px-3 text-xs text-muted-foreground">
+            <span>Sort by</span>
+            <select
+              value={getSortSelectValue(sort)}
+              onChange={(event) => {
+                setSort(parseSortSelectValue(event.currentTarget.value));
+              }}
+              aria-label="Sort users"
+              className="bg-transparent font-medium text-foreground outline-none"
+            >
+              <option value="default">Default order</option>
+              <option value="lastLoginAt:desc">Last login: newest</option>
+              <option value="lastLoginAt:asc">Last login: oldest</option>
+              <option value="createdAt:desc">Joined: newest</option>
+              <option value="createdAt:asc">Joined: oldest</option>
+            </select>
+          </label>
+        </div>
+
         <div className="hidden overflow-x-auto sm:block">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="pb-2 pr-3 font-semibold">User</th>
                 <th className="px-3 pb-2 font-semibold">Role</th>
-                <th className="px-3 pb-2 text-right font-semibold">
-                  Last login
-                </th>
-                <th className="pb-2 pl-3 text-right font-semibold">Joined</th>
+                <SortableHeader
+                  label="Last login"
+                  sort={sort}
+                  sortKey="lastLoginAt"
+                  onToggle={(sortKey) => {
+                    setSort((currentSort) => getNextSort(currentSort, sortKey));
+                  }}
+                />
+                <SortableHeader
+                  label="Joined"
+                  sort={sort}
+                  sortKey="createdAt"
+                  onToggle={(sortKey) => {
+                    setSort((currentSort) => getNextSort(currentSort, sortKey));
+                  }}
+                />
                 <th className="sticky right-0 z-10 bg-background/95 pb-2 pl-3 text-right font-semibold">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => {
+              {displayedUsers.map((user) => {
                 const disabled =
                   savingUserId !== null && savingUserId !== user.id;
                 const roleLockedLabel =
@@ -488,7 +661,7 @@ export const Users = () => {
         </div>
 
         <div className="grid gap-3 sm:hidden">
-          {filteredUsers.map((user) => {
+          {displayedUsers.map((user) => {
             const disabled =
               savingUserId !== null && savingUserId !== user.id;
             const roleLockedLabel =
@@ -574,7 +747,7 @@ export const Users = () => {
           })}
         </div>
 
-        {!loading && filteredUsers.length === 0 && (
+        {!loading && displayedUsers.length === 0 && (
           <p className="rounded-md border border-dashed border-border px-3 py-8 text-center text-sm text-muted-foreground">
             No users found.
           </p>
