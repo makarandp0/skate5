@@ -106,7 +106,7 @@ export const App = () => {
               <Route
                 path="/email"
                 element={
-                  <RequireRole minimumRole="admin">
+                  <RequireRole minimumRole="developer">
                     <Email />
                   </RequireRole>
                 }

@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { getRoleLabel } from "@skate5/shared";
+import { getRoleLabel, userRoleSchema } from "@skate5/shared";
 import { LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { Avatar } from "../components/ui/Avatar.js";
@@ -7,10 +7,21 @@ import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 
 export const Profile = () => {
-  const { profile, loading, logOut } = useAuth();
+  const { profile, loading, availableRoles, setEffectiveRole, logOut } =
+    useAuth();
 
   if (loading) return null;
   if (!profile) return <Navigate to="/login" replace />;
+
+  const canChooseEffectiveRole =
+    profile.actualRole === "admin" || profile.actualRole === "developer";
+  const showRoleSwitcher = canChooseEffectiveRole && availableRoles.length > 1;
+
+  const handleRoleChange = (value: string): void => {
+    const parsedRole = userRoleSchema.safeParse(value);
+    if (!parsedRole.success) return;
+    void setEffectiveRole(parsedRole.data);
+  };
 
   return (
     <div className="space-y-6">
@@ -48,13 +59,32 @@ export const Profile = () => {
         </div>
         <div className="flex items-center gap-3 rounded-md bg-accent/10 px-3 py-2">
           <ShieldCheck size={16} className="text-accent" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase text-muted-foreground">
               Access
             </p>
-            <p className="text-sm">{getRoleLabel(profile.role)}</p>
+            {showRoleSwitcher ? (
+              <label className="mt-1 block">
+                <span className="sr-only">View app as</span>
+                <select
+                  value={profile.role}
+                  onChange={(event) => {
+                    handleRoleChange(event.currentTarget.value);
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {getRoleLabel(role)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="text-sm">{getRoleLabel(profile.role)}</p>
+            )}
             {profile.actualRole !== profile.role && (
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Account role: {getRoleLabel(profile.actualRole)}
               </p>
             )}

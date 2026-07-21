@@ -30,7 +30,7 @@ export const appNavItems: AppNavItem[] = [
     to: "/email",
     icon: Mail,
     label: "Email",
-    minimumRole: "admin",
+    minimumRole: "developer",
   },
   {
     to: "/users",
