@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { networkInterfaces } from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
@@ -206,6 +212,26 @@ const matchingRepoDevPids = () => {
     .map((row) => row.pid);
 };
 
+const staleBranchRecordedPids = (currentBranchKey) => {
+  let entries = [];
+  try {
+    entries = readdirSync(devRoot, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  return entries
+    .filter((entry) => entry.isDirectory() && entry.name !== currentBranchKey)
+    .flatMap((entry) => {
+      const branchDir = path.join(devRoot, entry.name);
+      return [
+        readPid(path.join(branchDir, "api.pid")),
+        readPid(path.join(branchDir, "web.pid")),
+      ];
+    })
+    .filter((pid) => pid && isAlive(pid));
+};
+
 const pidsOnPort = (port) => {
   const result = spawnSync("lsof", ["-ti", `tcp:${String(port)}`], {
     cwd: repoRoot,
@@ -282,8 +308,13 @@ const main = async () => {
   const portConflictPids = [...apiPortPids, ...webPortPids].filter(
     (pid) => !keepPids.has(pid)
   );
+  const staleBranchPids = staleBranchRecordedPids(branchKey).filter(
+    (pid) => !keepPids.has(pid)
+  );
 
-  await killPids([...new Set([...duplicatePids, ...portConflictPids])]);
+  await killPids([
+    ...new Set([...duplicatePids, ...portConflictPids, ...staleBranchPids]),
+  ]);
 
   // Reuse when possible so rerunning `pnpm dev:branch` is idempotent.
   const reusableApi = await fetchOk(`${apiUrl}/health`);

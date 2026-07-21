@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { LogIn, LogOut, Menu, Moon, ShieldCheck, Sun, X } from "lucide-react";
-import {
-  getRoleLabel,
-  userRoleSchema,
-  type UserRole,
-} from "@skate5/shared";
+import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
@@ -18,7 +13,7 @@ import { useTheme } from "../hooks/useTheme.js";
 import skateJourneysIcon from "../assets/skate-journeys-icon.jpg";
 
 export const Header = () => {
-  const { profile, availableRoles, setEffectiveRole, logOut } = useAuth();
+  const { profile, logOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -65,37 +60,6 @@ export const Header = () => {
           label: "Sign in",
         },
       ];
-  const showRoleSwitcher = profile && availableRoles.length > 1;
-
-  const handleRoleChange = (value: string): void => {
-    const parsedRole = userRoleSchema.safeParse(value);
-    if (!parsedRole.success) return;
-    void setEffectiveRole(parsedRole.data);
-  };
-
-  const roleSelect = (className: string) => {
-    if (!profile || !showRoleSwitcher) return null;
-
-    return (
-      <label className={className}>
-        <ShieldCheck size={15} className="shrink-0 text-primary" />
-        <span className="sr-only">View app as</span>
-        <select
-          value={profile.role}
-          onChange={(event) => {
-            handleRoleChange(event.currentTarget.value);
-          }}
-          className="min-w-0 bg-transparent text-xs font-medium outline-none"
-        >
-          {availableRoles.map((role: UserRole) => (
-            <option key={role} value={role}>
-              {getRoleLabel(role)}
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
@@ -123,9 +87,6 @@ export const Header = () => {
         </Link>
 
         <div className="relative flex items-center gap-2" ref={menuRef}>
-          {roleSelect(
-            "hidden h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-background/70 px-2 text-muted-foreground shadow-sm sm:flex"
-          )}
           <Button
             type="button"
             variant="ghost"
@@ -136,19 +97,6 @@ export const Header = () => {
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </Button>
-          {profile && (
-            <Link
-              to="/profile"
-              className="rounded-full ring-2 ring-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Open profile"
-            >
-              <Avatar
-                src={profile.photoUrl}
-                name={profile.displayName}
-                className="h-8 w-8"
-              />
-            </Link>
-          )}
           <Button
             type="button"
             variant="ghost"
@@ -159,9 +107,26 @@ export const Header = () => {
             onClick={() => {
               setMenuOpen((open) => !open);
             }}
-            className="h-9 w-9"
+            className={cn(
+              "h-9 w-9",
+              profile &&
+                "rounded-full p-0 ring-2 ring-background hover:bg-transparent"
+            )}
           >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            {profile ? (
+              <Avatar
+                src={profile.photoUrl}
+                name={profile.displayName}
+                className={cn(
+                  "h-8 w-8",
+                  menuOpen && "ring-2 ring-primary/50"
+                )}
+              />
+            ) : menuOpen ? (
+              <X size={20} />
+            ) : (
+              <Menu size={20} />
+            )}
           </Button>
 
           {menuOpen && (
@@ -170,27 +135,8 @@ export const Header = () => {
               role="menu"
               className="absolute right-0 top-11 w-72 overflow-hidden rounded-lg border border-border/80 bg-background/95 shadow-xl shadow-slate-900/10 backdrop-blur dark:shadow-black/30"
             >
-              {profile && (
-                <div className="border-b border-border/80 bg-muted/40 px-3 py-2.5">
-                  <p className="truncate text-sm font-medium">
-                    {profile.displayName}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {profile.email}
-                  </p>
-                  {profile.actualRole !== profile.role && (
-                    <p className="mt-1 text-xs font-medium text-primary">
-                      {getRoleLabel(profile.actualRole)} viewing as{" "}
-                      {getRoleLabel(profile.role)}
-                    </p>
-                  )}
-                </div>
-              )}
-              {roleSelect(
-                "mx-3 mt-3 flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground sm:hidden"
-              )}
               <div className="py-1">
-                {menuNavItems.map(({ to, icon: Icon, label }) => (
+                {menuNavItems.map(({ to, icon: Icon, label, minimumRole }) => (
                   <NavLink
                     key={to}
                     to={to}
@@ -207,6 +153,11 @@ export const Header = () => {
                   >
                     <Icon size={16} />
                     <span>{label}</span>
+                    {minimumRole === "developer" && (
+                      <span className="ml-auto rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                        Dev
+                      </span>
+                    )}
                   </NavLink>
                 ))}
               </div>
