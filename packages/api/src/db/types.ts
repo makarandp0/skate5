@@ -69,9 +69,9 @@ export interface GridEntriesTable {
   id: Generated<string>;
   class_id: string;
   order: Generated<number>;
-  badge_id: string | null;
   time: string | null;
-  description: string | null;
+  class_text: string | null;
+  notes: string | null;
   instructor_ids: Generated<string[]>;
 }
 

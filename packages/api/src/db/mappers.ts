@@ -127,9 +127,9 @@ interface GridEntryRow {
   id: string;
   class_id: string;
   order: number;
-  badge_id: string | null;
   time: string | null;
-  description: string | null;
+  class_text: string | null;
+  notes: string | null;
   instructor_ids: unknown;
 }
 
@@ -242,9 +242,9 @@ export const toGridEntry = (row: GridEntryRow): GridEntry => {
     id: row.id,
     classId: row.class_id,
     order: row.order,
-    badgeId: row.badge_id,
     time: row.time,
-    description: row.description,
+    classText: row.class_text,
+    notes: row.notes,
     instructorIds: row.instructor_ids,
   });
 };
