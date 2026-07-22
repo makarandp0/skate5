@@ -15,7 +15,18 @@ export const manageableUserRoleSchema = z.enum([
 
 export const rsvpStatusSchema = z.enum(["yes", "no", "maybe", "none"]);
 
-export const classStatusSchema = z.enum(["draft", "published", "cancelled"]);
+export const editableClassStatusSchema = z.enum([
+  "draft",
+  "published",
+  "cancelled",
+]);
+
+export const classStatusSchema = z.enum([
+  "draft",
+  "published",
+  "cancelled",
+  "deleted",
+]);
 
 export const chatMessageKindSchema = z.enum(["user", "system"]);
 
@@ -175,14 +186,14 @@ export const createClassSchema = z.object({
   time: z.string().optional(),
   locationSlug: z.string().min(1),
   pills: z.array(classPillSchema).max(8).default([]),
-  status: classStatusSchema.default("draft"),
+  status: editableClassStatusSchema.default("draft"),
 });
 
 export const updateClassSchema = z.object({
   time: z.string().optional(),
   locationSlug: z.string().min(1),
   pills: z.array(classPillSchema).max(8).default([]),
-  status: classStatusSchema.default("draft"),
+  status: editableClassStatusSchema.default("draft"),
 });
 
 export const updateUserSchema = z

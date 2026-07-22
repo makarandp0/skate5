@@ -69,7 +69,8 @@ export const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
         "inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase leading-none",
         status === "published" && "bg-accent/10 text-accent",
         status === "draft" && "bg-secondary/25 text-secondary-foreground",
-        status === "cancelled" && "bg-red-100 text-red-700"
+        status === "cancelled" && "bg-red-100 text-red-700",
+        status === "deleted" && "bg-slate-200 text-slate-700"
       )}
     >
       {status}
@@ -87,6 +88,8 @@ export const shouldShowClassStatus = (
       return canManage;
     case "cancelled":
       return true;
+    case "deleted":
+      return canManage;
     default:
       status satisfies never;
       return false;

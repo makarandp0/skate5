@@ -1,5 +1,6 @@
 import {
   classAttendancePersonSchema,
+  classStatusSchema,
   chatMessageKindSchema,
   classPillSchema,
   gridEntrySchema,
@@ -159,8 +160,7 @@ interface ChatMessageRow {
 }
 
 const assertClassStatus = (s: string): SkateClass["status"] => {
-  if (s === "draft" || s === "published" || s === "cancelled") return s;
-  throw new Error(`Invalid class status: ${s}`);
+  return classStatusSchema.parse(s);
 };
 
 const assertRsvpStatus = (s: string): Signup["rsvp"] => {
