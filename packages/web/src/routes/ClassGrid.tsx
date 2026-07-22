@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   canAssumeRole,
+  copyGridEntriesSchema,
   createGridEntrySchema,
   sendEmailSchema,
   updateGridEntrySchema,
@@ -33,6 +34,7 @@ import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
   ClassPills,
+  ClassIcon,
   getClassDateKey,
   LocationBadge,
 } from "../components/ClassCard.js";
@@ -42,8 +44,8 @@ import { Skeleton } from "../components/ui/Skeleton.js";
 import { splitEmailList } from "../lib/email.js";
 import { cn } from "../lib/utils.js";
 import type {
-  Badge,
   ClassGridResponse,
+  GridCopySource,
   GridEntry,
   GridInstructor,
 } from "@skate5/shared";
@@ -86,30 +88,6 @@ const getDateLabel = (value: string): string => {
   });
 };
 
-const BadgePill = ({ badge }: { badge: Badge | null }) => {
-  if (!badge) {
-    return (
-      <span className="inline-flex min-h-7 items-center rounded-full bg-muted px-3 text-xs font-semibold text-muted-foreground">
-        No badge
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex min-h-7 items-center gap-2 rounded-full border border-border bg-background/80 px-3 text-xs font-semibold">
-      <span
-        aria-hidden="true"
-        className="h-2.5 w-2.5 shrink-0 rounded-full border border-border"
-        style={{ backgroundColor: badge.color }}
-      />
-      <span>{badge.text}</span>
-      {badge.group && (
-        <span className="text-muted-foreground">({badge.group})</span>
-      )}
-    </span>
-  );
-};
-
 const InstructorChip = ({
   instructor,
   onRemove,
@@ -134,16 +112,6 @@ const InstructorChip = ({
       )}
     </span>
   );
-};
-
-const getBadgeLabel = (
-  entry: GridEntry,
-  badgeById: Map<string, Badge>
-): string => {
-  if (!entry.badgeId) return "No badge";
-  const badge = badgeById.get(entry.badgeId);
-  if (!badge) return "No badge";
-  return badge.group ? `${badge.group}: ${badge.text}` : badge.text;
 };
 
 const getInstructorNames = (
@@ -181,13 +149,11 @@ const getDefaultGridEmailMessage = (grid: ClassGridResponse): string => {
 const buildGridEmailText = ({
   grid,
   message,
-  badgeById,
   instructorById,
   gridUrl,
 }: {
   grid: ClassGridResponse;
   message: string;
-  badgeById: Map<string, Badge>;
   instructorById: Map<string, GridInstructor>;
   gridUrl: string;
 }): string => {
@@ -195,9 +161,9 @@ const buildGridEmailText = ({
     const instructors = getInstructorNames(entry, instructorById).join(", ");
     return [
       entry.time ?? `Row ${String(entry.order + 1)}`,
-      getBadgeLabel(entry, badgeById),
-      entry.description ?? "No description",
+      entry.classText ?? "Class TBD",
       instructors || "Unassigned",
+      entry.notes ?? "",
     ].join(" | ");
   });
 
@@ -208,7 +174,7 @@ const buildGridEmailText = ({
     grid.class.pills.length > 0 ? `Notes: ${grid.class.pills.join(", ")}` : "",
     `Location: ${grid.class.location.name} (${grid.class.location.address})`,
     "",
-    "Time | Badge | Description | Instructors",
+    "Time | Class | Instructors | Notes",
     ...rows,
     "",
     `View the grid in Skate5: ${gridUrl}`,
@@ -218,14 +184,12 @@ const buildGridEmailText = ({
 const buildGridEmailHtml = ({
   grid,
   message,
-  badgeById,
   instructorById,
   gridUrl,
   generatedBy,
 }: {
   grid: ClassGridResponse;
   message: string;
-  badgeById: Map<string, Badge>;
   instructorById: Map<string, GridInstructor>;
   gridUrl: string;
   generatedBy: string;
@@ -234,15 +198,16 @@ const buildGridEmailHtml = ({
     .map((entry) => {
       const instructors =
         getInstructorNames(entry, instructorById).join(", ") || "Unassigned";
-      const description = entry.description ?? "No description";
+      const classText = entry.classText ?? "Class TBD";
+      const notes = entry.notes ?? "";
       const time = entry.time ?? `Row ${String(entry.order + 1)}`;
 
       return `
         <tr>
           <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;font-weight:600;">${escapeHtml(time)}</td>
-          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;">${escapeHtml(getBadgeLabel(entry, badgeById))}</td>
-          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;white-space:pre-line;">${escapeHtml(description)}</td>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;white-space:pre-line;">${escapeHtml(classText)}</td>
           <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;">${escapeHtml(instructors)}</td>
+          <td style="border:1px solid #d4d4d8;padding:10px;vertical-align:top;white-space:pre-line;">${escapeHtml(notes)}</td>
         </tr>
       `;
     })
@@ -262,9 +227,9 @@ const buildGridEmailHtml = ({
         <thead>
           <tr style="background:#f4f4f5;">
             <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Time</th>
-            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Badge</th>
-            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Description</th>
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Class</th>
             <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Instructors</th>
+            <th style="border:1px solid #d4d4d8;padding:10px;text-align:left;">Notes</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -279,33 +244,29 @@ const buildGridEmailHtml = ({
 
 const GridEntryEditor = ({
   entry,
-  badges,
   instructors,
-  badgeById,
   instructorById,
   saving,
   onSave,
   onCancel,
 }: {
   entry: GridEntry;
-  badges: Badge[];
   instructors: GridInstructor[];
-  badgeById: Map<string, Badge>;
   instructorById: Map<string, GridInstructor>;
   saving: boolean;
   onSave: (entry: GridEntry) => Promise<void>;
   onCancel: () => void;
 }) => {
   const [time, setTime] = useState(entry.time ?? "");
-  const [description, setDescription] = useState(entry.description ?? "");
-  const [badgeId, setBadgeId] = useState(entry.badgeId ?? "");
+  const [classText, setClassText] = useState(entry.classText ?? "");
+  const [notes, setNotes] = useState(entry.notes ?? "");
   const [instructorIds, setInstructorIds] = useState(entry.instructorIds);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTime(entry.time ?? "");
-    setDescription(entry.description ?? "");
-    setBadgeId(entry.badgeId ?? "");
+    setClassText(entry.classText ?? "");
+    setNotes(entry.notes ?? "");
     setInstructorIds(entry.instructorIds);
     setError(null);
   }, [entry]);
@@ -330,17 +291,17 @@ const GridEntryEditor = ({
     try {
       const body = updateGridEntrySchema.parse({
         order: entry.order,
-        badgeId: badgeId || null,
         time: time.trim() || null,
-        description: description.trim() || null,
+        classText: classText.trim() || null,
+        notes: notes.trim() || null,
         instructorIds,
       });
       await onSave({
         ...entry,
         order: body.order,
-        badgeId: body.badgeId ?? null,
         time: body.time ?? null,
-        description: body.description ?? null,
+        classText: body.classText ?? null,
+        notes: body.notes ?? null,
         instructorIds: body.instructorIds,
       });
       onCancel();
@@ -357,9 +318,9 @@ const GridEntryEditor = ({
           <p className="text-xs font-bold uppercase text-muted-foreground">
             Editing row {entry.order + 1}
           </p>
-          <div className="mt-2">
-            <BadgePill badge={entry.badgeId ? badgeById.get(entry.badgeId) ?? null : null} />
-          </div>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {entry.classText ?? "Class TBD"}
+          </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -392,33 +353,28 @@ const GridEntryEditor = ({
         </label>
 
         <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-          Badge
-          <select
-            value={badgeId}
+          Class
+          <textarea
+            value={classText}
             onChange={(event) => {
-              setBadgeId(event.target.value);
+              setClassText(event.target.value);
             }}
-            className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">No badge</option>
-            {badges.map((badge) => (
-              <option key={badge.id} value={badge.id}>
-                {badge.group ? `${badge.group}: ${badge.text}` : badge.text}
-              </option>
-            ))}
-          </select>
+            rows={2}
+            placeholder="Beginner edges, backwards skating, open skate"
+            className="min-h-20 resize-y rounded-md border border-border bg-background/80 px-3 py-2 text-sm normal-case leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
         </label>
       </div>
 
       <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-        Description
+        Notes
         <textarea
-          value={description}
+          value={notes}
           onChange={(event) => {
-            setDescription(event.target.value);
+            setNotes(event.target.value);
           }}
           rows={3}
-          placeholder="Class focus, space, or assignment notes"
+          placeholder="Optional setup, space, or assignment notes"
           className="min-h-24 resize-y rounded-md border border-border bg-background/80 px-3 py-2 text-sm normal-case leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
       </label>
@@ -492,13 +448,11 @@ const GridEntryEditor = ({
 
 const GridEmailDialog = ({
   grid,
-  badgeById,
   instructorById,
   generatedBy,
   onClose,
 }: {
   grid: ClassGridResponse;
-  badgeById: Map<string, Badge>;
   instructorById: Map<string, GridInstructor>;
   generatedBy: string;
   onClose: () => void;
@@ -520,11 +474,10 @@ const GridEmailDialog = ({
       buildGridEmailText({
         grid,
         message,
-        badgeById,
         instructorById,
         gridUrl,
       }),
-    [grid, message, badgeById, instructorById, gridUrl]
+    [grid, message, instructorById, gridUrl]
   );
 
   const html = useMemo(
@@ -532,12 +485,11 @@ const GridEmailDialog = ({
       buildGridEmailHtml({
         grid,
         message,
-        badgeById,
         instructorById,
         gridUrl,
         generatedBy,
       }),
-    [grid, message, badgeById, instructorById, gridUrl, generatedBy]
+    [grid, message, instructorById, gridUrl, generatedBy]
   );
 
   const parsedEmail = useMemo(() => {
@@ -727,6 +679,196 @@ const GridEmailDialog = ({
   );
 };
 
+const GridCopyDialog = ({
+  grid,
+  saving,
+  onCopy,
+  onClose,
+}: {
+  grid: ClassGridResponse;
+  saving: boolean;
+  onCopy: (sourceClassId: string) => Promise<void>;
+  onClose: () => void;
+}) => {
+  const [sources, setSources] = useState<GridCopySource[]>([]);
+  const [selectedSourceId, setSelectedSourceId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    api
+      .getClassGridCopySources({ params: { id: grid.class.id } })
+      .then((response) => {
+        if (cancelled) return;
+        setSources(response);
+        setSelectedSourceId(response[0]?.classId ?? "");
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        console.error("get grid copy sources failed:", err);
+        if (!cancelled) {
+          setError("Could not load old grids.");
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [grid.class.id]);
+
+  const selectedSource =
+    sources.find((source) => source.classId === selectedSourceId) ?? null;
+
+  const handleCopy = async (): Promise<void> => {
+    setError(null);
+    const parsed = copyGridEntriesSchema.safeParse({
+      sourceClassId: selectedSourceId,
+    });
+
+    if (!parsed.success) {
+      setError("Choose a grid to copy.");
+      return;
+    }
+
+    try {
+      await onCopy(parsed.data.sourceClassId);
+      onClose();
+    } catch (err) {
+      console.error("copy grid failed:", err);
+      setError("Could not copy that grid. Try another source.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="grid-copy-title"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+          <div>
+            <h2 id="grid-copy-title" className="text-lg font-bold">
+              Copy grid
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Choose an old grid to replace this one. Instructors will stay unassigned.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Close copy grid"
+            onClick={onClose}
+            disabled={saving}
+          >
+            <X size={18} />
+          </Button>
+        </div>
+
+        <div className="max-h-[calc(90vh-140px)] space-y-4 overflow-y-auto p-4">
+          {error && (
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14" />
+              <Skeleton className="h-14" />
+              <Skeleton className="h-14" />
+            </div>
+          ) : sources.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {sources.map((source) => {
+                const selected = source.classId === selectedSourceId;
+
+                return (
+                  <label
+                    key={source.classId}
+                    className={cn(
+                      "flex cursor-pointer justify-center rounded-md border border-border bg-background p-2 transition-colors",
+                      selected && "border-primary bg-primary/5"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="grid-source"
+                      value={source.classId}
+                      checked={selected}
+                      onChange={() => {
+                        setSelectedSourceId(source.classId);
+                      }}
+                      className="sr-only"
+                    />
+                    <ClassIcon
+                      skateClass={{
+                        date: source.date,
+                        location: source.location,
+                        time: source.time,
+                      }}
+                      className="rounded-md"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-6 text-center text-sm text-muted-foreground">
+              No old grids are available to copy.
+            </div>
+          )}
+
+          {selectedSource && grid.entries.length > 0 && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Copying {getDateLabel(selectedSource.date)} will replace the {grid.entries.length} rows currently in this grid.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Times, class text, and notes are copied. Instructors are not copied.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleCopy();
+              }}
+              disabled={saving || loading || !selectedSourceId}
+            >
+              {saving ? (
+                <LoaderCircle size={16} className="animate-spin" />
+              ) : (
+                <Copy size={16} />
+              )}
+              Copy grid
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ClassGrid = () => {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
@@ -737,6 +879,7 @@ export const ClassGrid = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -754,14 +897,6 @@ export const ClassGrid = () => {
         setLoading(false);
       });
   }, [id]);
-
-  const badgeById = useMemo(() => {
-    const map = new Map<string, Badge>();
-    for (const badge of grid?.badges ?? []) {
-      map.set(badge.id, badge);
-    }
-    return map;
-  }, [grid?.badges]);
 
   const instructorById = useMemo(() => {
     const map = new Map<string, GridInstructor>();
@@ -797,12 +932,11 @@ export const ClassGrid = () => {
 
   const handleAddRow = async (): Promise<void> => {
     if (!id || !grid) return;
-    const firstBadgeId = grid.badges.length > 0 ? grid.badges[0].id : null;
     const body = createGridEntrySchema.parse({
       order: grid.entries.length,
-      badgeId: firstBadgeId,
       time: "10AM - 11AM",
-      description: null,
+      classText: null,
+      notes: null,
       instructorIds: [],
     });
     await setGridFromAction("add", () =>
@@ -817,9 +951,9 @@ export const ClassGrid = () => {
         params: { id, entryId: entry.id },
         body: {
           order: entry.order,
-          badgeId: entry.badgeId,
           time: entry.time,
-          description: entry.description,
+          classText: entry.classText,
+          notes: entry.notes,
           instructorIds: entry.instructorIds,
         },
       })
@@ -864,10 +998,13 @@ export const ClassGrid = () => {
     );
   };
 
-  const handleDuplicate = async (): Promise<void> => {
+  const handleCopyGrid = async (sourceClassId: string): Promise<void> => {
     if (!id) return;
-    await setGridFromAction("duplicate", () =>
-      api.duplicatePreviousClassGrid({ params: { id } })
+    await setGridFromAction("copy", () =>
+      api.copyClassGrid({
+        params: { id },
+        body: { sourceClassId },
+      })
     );
   };
 
@@ -935,24 +1072,22 @@ export const ClassGrid = () => {
 
           {canManage && (
             <div className="flex flex-wrap gap-2">
-              {grid.entries.length === 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    void handleDuplicate();
-                  }}
-                  disabled={savingAny}
-                  className={cn("border", adminActionClassName)}
-                >
-                  {busyAction === "duplicate" ? (
-                    <LoaderCircle size={16} className="animate-spin" />
-                  ) : (
-                    <Copy size={16} />
-                  )}
-                  Duplicate
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCopyDialogOpen(true);
+                }}
+                disabled={savingAny}
+                className={cn("border", adminActionClassName)}
+              >
+                {busyAction === "copy" ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : (
+                  <Copy size={16} />
+                )}
+                Copy grid
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -1004,11 +1139,21 @@ export const ClassGrid = () => {
       {canManage && emailDialogOpen && (
         <GridEmailDialog
           grid={grid}
-          badgeById={badgeById}
           instructorById={instructorById}
           generatedBy={profile?.displayName ?? "Skate5"}
           onClose={() => {
             setEmailDialogOpen(false);
+          }}
+        />
+      )}
+
+      {canManage && copyDialogOpen && (
+        <GridCopyDialog
+          grid={grid}
+          saving={savingAny}
+          onCopy={handleCopyGrid}
+          onClose={() => {
+            setCopyDialogOpen(false);
           }}
         />
       )}
@@ -1039,9 +1184,9 @@ export const ClassGrid = () => {
               <thead className="bg-muted/60 text-xs font-bold uppercase text-muted-foreground">
                 <tr>
                   <th className="w-24 px-4 py-3">Time</th>
-                  <th className="w-48 px-4 py-3">Badge</th>
-                  <th className="px-4 py-3">Description</th>
+                  <th className="min-w-56 px-4 py-3">Class</th>
                   <th className="w-64 px-4 py-3">Instructors</th>
+                  <th className="min-w-56 px-4 py-3">Notes</th>
                   {canManage && <th className="w-40 px-4 py-3">Actions</th>}
                 </tr>
               </thead>
@@ -1060,23 +1205,14 @@ export const ClassGrid = () => {
                         <td className="px-4 py-3 font-semibold">
                           {entry.time ?? `Row ${String(entry.order + 1)}`}
                         </td>
-                        <td className="px-4 py-3">
-                          <BadgePill
-                            badge={
-                              entry.badgeId
-                                ? badgeById.get(entry.badgeId) ?? null
-                                : null
-                            }
-                          />
-                        </td>
                         <td className="px-4 py-3 text-foreground/80">
-                          {entry.description ? (
+                          {entry.classText ? (
                             <p className="line-clamp-3 whitespace-pre-line leading-relaxed">
-                              {entry.description}
+                              {entry.classText}
                             </p>
                           ) : (
                             <span className="text-muted-foreground">
-                              No description
+                              Class TBD
                             </span>
                           )}
                         </td>
@@ -1097,6 +1233,17 @@ export const ClassGrid = () => {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-foreground/80">
+                          {entry.notes ? (
+                            <p className="line-clamp-3 whitespace-pre-line leading-relaxed">
+                              {entry.notes}
+                            </p>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              No notes
+                            </span>
+                          )}
                         </td>
                         {canManage && (
                           <td className="px-4 py-3">
@@ -1170,9 +1317,7 @@ export const ClassGrid = () => {
                           >
                             <GridEntryEditor
                               entry={entry}
-                              badges={grid.badges}
                               instructors={grid.instructors}
-                              badgeById={badgeById}
                               instructorById={instructorById}
                               saving={savingAny}
                               onSave={handleSaveRow}
@@ -1195,7 +1340,7 @@ export const ClassGrid = () => {
           <p className="font-semibold">No grid rows yet.</p>
           {canManage && (
             <p className="mt-1 text-sm text-muted-foreground">
-              Add a row or duplicate last week to start assigning instructors.
+              Add a row or copy an old grid to start assigning instructors.
             </p>
           )}
         </Card>

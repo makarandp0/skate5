@@ -19,6 +19,8 @@ import {
   createBadgeSchema,
   createGridEntrySchema,
   updateGridEntrySchema,
+  copyGridEntriesSchema,
+  gridCopySourceSchema,
   reorderGridEntriesSchema,
   publishGridSchema,
   firebaseClientConfigSchema,
@@ -178,10 +180,17 @@ export const contract = {
     body: reorderGridEntriesSchema,
     response: classGridResponseSchema,
   },
-  duplicatePreviousClassGrid: {
-    method: "POST",
-    path: "/classes/:id/grid/duplicate-previous",
+  getClassGridCopySources: {
+    method: "GET",
+    path: "/classes/:id/grid/copy-sources",
     params: z.object({ id: z.string() }),
+    response: z.array(gridCopySourceSchema),
+  },
+  copyClassGrid: {
+    method: "POST",
+    path: "/classes/:id/grid/copy",
+    params: z.object({ id: z.string() }),
+    body: copyGridEntriesSchema,
     response: classGridResponseSchema,
   },
   publishClassGrid: {

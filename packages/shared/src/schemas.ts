@@ -127,9 +127,9 @@ export const gridEntrySchema = z.object({
   id: z.string(),
   classId: z.string(),
   order: z.int(),
-  badgeId: z.string().nullable(),
   time: z.string().nullable(),
-  description: z.string().nullable(),
+  classText: z.string().nullable(),
+  notes: z.string().nullable(),
   instructorIds: z.array(z.string()),
 });
 
@@ -144,8 +144,17 @@ export const gridInstructorSchema = z.object({
 export const classGridResponseSchema = z.object({
   class: skateClassSchema,
   entries: z.array(gridEntrySchema),
-  badges: z.array(badgeSchema),
   instructors: z.array(gridInstructorSchema),
+});
+
+export const gridCopySourceSchema = z.object({
+  classId: z.string(),
+  date: z.string(),
+  time: z.string().nullable(),
+  location: locationSchema,
+  entryCount: z.int(),
+  isSameLocation: z.boolean(),
+  isPreviousWeek: z.boolean(),
 });
 
 export const chatSchema = z.object({
@@ -220,18 +229,22 @@ export const createBadgeSchema = z.object({
 
 export const createGridEntrySchema = z.object({
   order: z.int().default(0),
-  badgeId: z.string().nullable().optional(),
   time: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
+  classText: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   instructorIds: z.array(z.string()).default([]),
 });
 
 export const updateGridEntrySchema = z.object({
   order: z.int(),
-  badgeId: z.string().nullable().optional(),
   time: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
+  classText: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   instructorIds: z.array(z.string()),
+});
+
+export const copyGridEntriesSchema = z.object({
+  sourceClassId: z.string(),
 });
 
 export const reorderGridEntriesSchema = z.object({

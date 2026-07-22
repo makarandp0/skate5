@@ -15,6 +15,7 @@ import {
   type ClassAttendanceResponse,
   type ClassAttendancePerson,
   type ClassGridResponse,
+  type GridCopySource,
   type Chat,
   type ChatMessage,
   type RouteHandlers,
@@ -539,16 +540,6 @@ const getGridEntriesForClass = async (
   return rows.map(toGridEntry);
 };
 
-const getBadges = async (): Promise<ClassGridResponse["badges"]> => {
-  const rows = await db
-    .selectFrom("badges")
-    .selectAll()
-    .orderBy("group", "asc")
-    .orderBy("text", "asc")
-    .execute();
-  return rows.map(toBadge);
-};
-
 const getGridInstructors = async ({
   classId,
   entries,
@@ -652,21 +643,16 @@ const getClassGridResponse = async ({
     return {
       class: skateClass,
       entries: [],
-      badges: [],
       instructors: [],
     };
   }
 
   const entries = await getGridEntriesForClass(classId);
-  const [badges, instructors] = await Promise.all([
-    getBadges(),
-    getGridInstructors({ classId, entries, canManage }),
-  ]);
+  const instructors = await getGridInstructors({ classId, entries, canManage });
 
   return {
     class: skateClass,
     entries,
-    badges,
     instructors,
   };
 };
@@ -731,10 +717,12 @@ const updateGridOrder = async ({
   });
 };
 
-const duplicatePreviousGrid = async (classId: string): Promise<void> => {
+const getClassGridCopySources = async (
+  classId: string
+): Promise<GridCopySource[]> => {
   const currentClass = await db
     .selectFrom("classes")
-    .select(["date"])
+    .select(["id", "date", "location_slug"])
     .where("id", "=", classId)
     .where("status", "!=", "deleted")
     .executeTakeFirst();
@@ -743,45 +731,118 @@ const duplicatePreviousGrid = async (classId: string): Promise<void> => {
     throw new HttpError(404, "Class not found");
   }
 
-  const currentEntries = await getGridEntriesForClass(classId);
-  if (currentEntries.length > 0) {
-    throw new HttpError(409, "Current class already has grid entries");
-  }
+  const classRows = await db
+    .selectFrom("classes")
+    .innerJoin("locations", "locations.slug", "classes.location_slug")
+    .select([
+      "classes.id as class_id",
+      "classes.date as date",
+      "classes.time as time",
+      "classes.location_slug as location_slug",
+      "locations.name as location_name",
+      "locations.short_name as location_short_name",
+      "locations.address as location_address",
+      "locations.color as location_color",
+      "locations.active as location_active",
+      "locations.sort_order as location_sort_order",
+    ])
+    .where("classes.id", "!=", classId)
+    .where("classes.status", "!=", "deleted")
+    .orderBy("classes.date", "desc")
+    .orderBy("classes.time", "desc")
+    .execute();
 
   const currentDateKey = toDateKey(currentClass.date);
   if (!currentDateKey) {
     throw new HttpError(400, "Class date is invalid");
   }
 
-  const previousDateKey = shiftDateKey(currentDateKey, -7);
-  const classRows = await db
-    .selectFrom("classes")
-    .select(["id", "date"])
-    .where("status", "!=", "deleted")
-    .execute();
-  const previousClass = classRows.find(
-    (row) => row.id !== classId && toDateKey(row.date) === previousDateKey
-  );
+  const eligibleClassRows = classRows.filter((row) => {
+    const dateKey = toDateKey(row.date);
+    return dateKey !== null && dateKey < currentDateKey;
+  });
 
-  if (!previousClass) {
-    return;
+  const classIds = eligibleClassRows.map((row) => row.class_id);
+  if (classIds.length === 0) {
+    return [];
   }
 
-  const previousEntries = await getGridEntriesForClass(previousClass.id);
-  if (previousEntries.length === 0) {
-    return;
+  const previousDateKey = shiftDateKey(currentDateKey, -7);
+  const entryRows = await db
+    .selectFrom("grid_entries")
+    .select(["class_id"])
+    .select((eb) => eb.fn.countAll().as("entry_count"))
+    .where("class_id", "in", classIds)
+    .groupBy("class_id")
+    .execute();
+
+  const entryCountByClassId = new Map<string, number>();
+  for (const row of entryRows) {
+    entryCountByClassId.set(row.class_id, countSchema.parse(row.entry_count));
+  }
+
+  return eligibleClassRows
+    .flatMap((row) => {
+      const entryCount = entryCountByClassId.get(row.class_id) ?? 0;
+      if (entryCount === 0) return [];
+
+      return [
+        {
+          classId: row.class_id,
+          date: row.date,
+          time: row.time,
+          location: toLocation({
+            slug: row.location_slug,
+            name: row.location_name,
+            short_name: row.location_short_name,
+            address: row.location_address,
+            color: row.location_color,
+            active: row.location_active,
+            sort_order: row.location_sort_order,
+          }),
+          entryCount,
+          isSameLocation: row.location_slug === currentClass.location_slug,
+          isPreviousWeek: toDateKey(row.date) === previousDateKey,
+        },
+      ];
+    })
+    .slice(0, 4);
+};
+
+const copyGridFromSource = async ({
+  targetClassId,
+  sourceClassId,
+}: {
+  targetClassId: string;
+  sourceClassId: string;
+}): Promise<void> => {
+  if (targetClassId === sourceClassId) {
+    throw new HttpError(400, "Choose a different class to copy from");
+  }
+
+  await ensureClassExists(targetClassId);
+  await ensureClassExists(sourceClassId);
+
+  const sourceEntries = await getGridEntriesForClass(sourceClassId);
+  if (sourceEntries.length === 0) {
+    throw new HttpError(409, "Source class does not have grid entries");
   }
 
   await db.transaction().execute(async (trx) => {
-    for (const entry of previousEntries) {
+    await trx
+      .deleteFrom("grid_entries")
+      .where("class_id", "=", targetClassId)
+      .execute();
+
+    for (const [index, entry] of sourceEntries.entries()) {
       await trx
         .insertInto("grid_entries")
         .values({
-          class_id: classId,
-          order: entry.order,
-          badge_id: entry.badgeId,
+          class_id: targetClassId,
+          order: index,
           time: entry.time,
-          description: entry.description,
+          class_text: entry.classText,
+          notes: entry.notes,
           instructor_ids: jsonbStringArray([]),
         })
         .execute();
@@ -1103,9 +1164,9 @@ const handlers: RouteHandlers = {
       .values({
         class_id: params.id,
         order: body.order,
-        badge_id: body.badgeId ?? null,
         time: body.time ?? null,
-        description: body.description ?? null,
+        class_text: body.classText ?? null,
+        notes: body.notes ?? null,
         instructor_ids: jsonbStringArray(body.instructorIds),
       })
       .execute();
@@ -1125,9 +1186,9 @@ const handlers: RouteHandlers = {
       .updateTable("grid_entries")
       .set({
         order: body.order,
-        badge_id: body.badgeId ?? null,
         time: body.time ?? null,
-        description: body.description ?? null,
+        class_text: body.classText ?? null,
+        notes: body.notes ?? null,
         instructor_ids: jsonbStringArray(body.instructorIds),
       })
       .where("id", "=", params.entryId)
@@ -1177,10 +1238,17 @@ const handlers: RouteHandlers = {
     return getClassGridResponse({ classId: params.id, canManage: true });
   },
 
-  duplicatePreviousClassGrid: async ({ params, user }) => {
+  getClassGridCopySources: async ({ params, user }) => {
     requireAdmin(user.role);
-    await duplicatePreviousGrid(params.id);
+    return getClassGridCopySources(params.id);
+  },
 
+  copyClassGrid: async ({ params, body, user }) => {
+    requireAdmin(user.role);
+    await copyGridFromSource({
+      targetClassId: params.id,
+      sourceClassId: body.sourceClassId,
+    });
     return getClassGridResponse({ classId: params.id, canManage: true });
   },
 

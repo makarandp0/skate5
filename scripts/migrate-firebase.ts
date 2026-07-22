@@ -524,22 +524,16 @@ await db.transaction().execute(async (trx) => {
 
   // Phase 2: Badges
   console.log(`Inserting ${String(badgeEntries.length)} badges...`);
-  const badgeMap = new Map<string, string>(); // "text|group" → postgres ID
-  const badgeByTextMap = new Map<string, string>(); // text → postgres ID (fallback)
 
   for (const [, badge] of badgeEntries) {
-    const result = await trx
+    await trx
       .insertInto("badges")
       .values({
         text: badge.text,
         group: badge.group ?? null,
         color: badge.color,
       })
-      .returning(["id"])
-      .executeTakeFirstOrThrow();
-    const key = `${badge.text}|${badge.group ?? ""}`;
-    badgeMap.set(key, result.id);
-    badgeByTextMap.set(badge.text.toLowerCase(), result.id);
+      .execute();
   }
 
   // Phase 3: Classes
@@ -615,11 +609,8 @@ await db.transaction().execute(async (trx) => {
       continue;
     }
 
-    // Resolve badge text to badge_id
-    let badgeId: string | null = null;
-    if (entry.badge) {
-      badgeId = badgeByTextMap.get(entry.badge.toLowerCase()) ?? null;
-    }
+    const classText = entry.badge ?? entry.description ?? null;
+    const notes = entry.badge ? entry.description ?? null : null;
 
     // Resolve instructor UIDs to postgres user IDs
     const instructorUids = getInstructorArray(entry.instructors);
@@ -632,9 +623,9 @@ await db.transaction().execute(async (trx) => {
       .values({
         class_id: pgClassId,
         order: entry.order ?? 0,
-        badge_id: badgeId,
         time: entry.time ?? null,
-        description: entry.description ?? null,
+        class_text: classText,
+        notes,
         instructor_ids: sql<string[]>`${JSON.stringify(instructorIds)}::jsonb`,
       })
       .execute();
