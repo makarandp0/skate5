@@ -1,7 +1,7 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, LoaderCircle, Save } from "lucide-react";
-import { createClassSchema, classStatusSchema } from "@skate5/shared";
+import { createClassSchema } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import {
   ClassFormFields,
@@ -65,7 +65,7 @@ export const ClassCreate = () => {
         time: formValues.time.trim() || undefined,
         locationSlug: formValues.locationSlug,
         pills: formValues.pills,
-        status: classStatusSchema.parse(formValues.status),
+        status: formValues.status,
       });
       const skateClass = await api.createClass({ body });
       void navigate(`/classes/${skateClass.id}`);

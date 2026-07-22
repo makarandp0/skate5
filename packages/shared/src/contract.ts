@@ -89,6 +89,12 @@ export const contract = {
     body: updateClassSchema,
     response: skateClassSchema,
   },
+  deleteClass: {
+    method: "DELETE",
+    path: "/classes/:id",
+    params: z.object({ id: z.string() }),
+    response: z.object({ ok: z.boolean() }),
+  },
   getClassSignups: {
     method: "GET",
     path: "/classes/:id/signups",

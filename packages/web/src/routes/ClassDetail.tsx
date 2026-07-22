@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { api } from "../lib/api.js";
 import {
@@ -49,6 +49,7 @@ const getNextClass = (
 
 export const ClassDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [skateClass, setSkateClass] = useState<SkateClass | null>(null);
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +95,9 @@ export const ClassDetail = () => {
 
   const dateKey = getClassDateKey(skateClass.date);
   const calendarUrl = `/?month=${dateKey.slice(0, 7)}`;
+  const handleClassDeleted = (): void => {
+    void navigate(calendarUrl);
+  };
 
   return (
     <div className="space-y-6">
@@ -122,6 +126,7 @@ export const ClassDetail = () => {
       <ClassFullView
         skateClass={skateClass}
         onClassUpdated={setSkateClass}
+        onClassDeleted={handleClassDeleted}
       />
     </div>
   );

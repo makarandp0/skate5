@@ -9,18 +9,19 @@ import {
   CheckCircle2,
   CircleHelp,
   Grid3X3,
+  AlertTriangle,
   LoaderCircle,
   MessageCircle,
   Pencil,
   Save,
   ShieldCheck,
+  Trash2,
   UsersRound,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
 import {
   canAssumeRole,
-  classStatusSchema,
   updateClassSchema,
 } from "@skate5/shared";
 import { api } from "../lib/api.js";
@@ -124,6 +125,8 @@ const getUnavailableRsvpMessage = (status: ClassStatus): string => {
       return "RSVPs open after this class is published.";
     case "cancelled":
       return "RSVPs are closed because this class is cancelled.";
+    case "deleted":
+      return "RSVPs are closed because this class has been deleted.";
     case "published":
       return "RSVPs are open.";
     default:
@@ -175,6 +178,7 @@ type ClassFullViewProps = {
   skateClass: SkateClass;
   showDateTile?: boolean;
   onClassUpdated?: (skateClass: SkateClass) => void;
+  onClassDeleted?: () => void;
 };
 
 const getClassFormValues = (skateClass: SkateClass): ClassFormValues => {
@@ -183,7 +187,7 @@ const getClassFormValues = (skateClass: SkateClass): ClassFormValues => {
     time: skateClass.time ?? "",
     locationSlug: skateClass.locationSlug,
     pills: skateClass.pills,
-    status: skateClass.status,
+    status: skateClass.status === "deleted" ? "draft" : skateClass.status,
   };
 };
 
@@ -191,6 +195,7 @@ export const ClassFullView = ({
   skateClass,
   showDateTile = true,
   onClassUpdated,
+  onClassDeleted,
 }: ClassFullViewProps) => {
   const { profile } = useAuth();
   const rawDate = getClassDateKey(skateClass.date);
@@ -202,6 +207,9 @@ export const ClassFullView = ({
   const [locations, setLocations] = useState<Location[]>([]);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [attendancePeople, setAttendancePeople] = useState<
     ClassAttendancePerson[]
   >([]);
@@ -225,6 +233,8 @@ export const ClassFullView = ({
     setEditing(false);
     setEditValues(getClassFormValues(skateClass));
     setEditError(null);
+    setConfirmingDelete(false);
+    setDeleteError(null);
     setActiveAdminRsvpUserId(null);
     setAdminRsvpError(null);
   }, [
@@ -357,7 +367,7 @@ export const ClassFullView = ({
         time: editValues.time.trim() || undefined,
         locationSlug: editValues.locationSlug,
         pills: editValues.pills,
-        status: classStatusSchema.parse(editValues.status),
+        status: editValues.status,
       });
       const updated = await api.updateClass({
         params: { id: skateClass.id },
@@ -376,6 +386,23 @@ export const ClassFullView = ({
   const handleEditSubmit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
     void handleUpdate();
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    if (deleting) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await api.deleteClass({ params: { id: skateClass.id } });
+      onClassDeleted?.();
+    } catch (err) {
+      console.error("deleteClass failed:", err);
+      setDeleteError("Could not delete class. Try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const summaryLabel = getClassSummaryLabel(skateClass);
@@ -475,19 +502,40 @@ export const ClassFullView = ({
                     </Link>
                   )}
                   {canEdit && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditing(true);
-                      }}
-                      className={cn("border", adminActionClassName)}
-                    >
-                      <ShieldCheck size={14} />
-                      <Pencil size={14} />
-                      Edit
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setConfirmingDelete(false);
+                          setEditing(true);
+                        }}
+                        className={cn("border", adminActionClassName)}
+                      >
+                        <ShieldCheck size={14} />
+                        <Pencil size={14} />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setEditing(false);
+                          setConfirmingDelete(true);
+                        }}
+                        disabled={deleting}
+                      >
+                        {deleting ? (
+                          <LoaderCircle size={14} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                        Delete
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -502,6 +550,57 @@ export const ClassFullView = ({
                   openInMaps
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {confirmingDelete && !editing && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-red-800">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">
+                  Mark this class as deleted?
+                </p>
+                <p className="mt-1 text-sm">
+                  This hides it from schedules while keeping its RSVPs, grid,
+                  and chat history.
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <p className="mt-3 rounded-md border border-red-300 bg-white/70 px-3 py-2 text-sm">
+                {deleteError}
+              </p>
+            )}
+            <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  setDeleteError(null);
+                }}
+                disabled={deleting}
+                className="bg-white/80 hover:bg-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  void handleDelete();
+                }}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                Delete class
+              </Button>
             </div>
           </div>
         )}

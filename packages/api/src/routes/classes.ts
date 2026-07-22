@@ -199,6 +199,7 @@ const ensureClassExists = async (classId: string): Promise<void> => {
     .selectFrom("classes")
     .select(["id"])
     .where("id", "=", classId)
+    .where("status", "!=", "deleted")
     .executeTakeFirst();
 
   if (!row) {
@@ -265,6 +266,7 @@ const getClassById = async (classId: string): Promise<SkateClass | null> => {
       "classes.updated_at as updated_at",
     ])
     .where("classes.id", "=", classId)
+    .where("classes.status", "!=", "deleted")
     .executeTakeFirst();
 
   if (!row) return null;
@@ -331,6 +333,8 @@ const setClassRsvp = async ({
 };
 
 const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
+  await ensureClassExists(classId);
+
   const existing = await db
     .selectFrom("chats")
     .selectAll()
@@ -345,6 +349,7 @@ const getOrCreateClassChat = async (classId: string): Promise<Chat> => {
     .selectFrom("classes")
     .select(["id"])
     .where("id", "=", classId)
+    .where("status", "!=", "deleted")
     .executeTakeFirst();
 
   if (!skateClass) {
@@ -465,6 +470,24 @@ const requireAdmin = (role: Parameters<typeof canAssumeRole>[0]): void => {
 const requireAdminAccess = (role: UserRole, message: string): void => {
   if (!canAssumeRole(role, "admin")) {
     throw new HttpError(403, message);
+  }
+};
+
+const markClassDeleted = async (classId: string): Promise<void> => {
+  const row = await db
+    .updateTable("classes")
+    .set({
+      status: "deleted",
+      grid_published: false,
+      updated_at: new Date(),
+    })
+    .where("id", "=", classId)
+    .where("status", "!=", "deleted")
+    .returning(["id"])
+    .executeTakeFirst();
+
+  if (!row) {
+    throw new HttpError(404, "Class not found");
   }
 };
 
@@ -617,6 +640,7 @@ const getClassGridResponse = async ({
       "classes.updated_at as updated_at",
     ])
     .where("classes.id", "=", classId)
+    .where("classes.status", "!=", "deleted")
     .executeTakeFirst();
 
   if (!classRow) {
@@ -712,6 +736,7 @@ const duplicatePreviousGrid = async (classId: string): Promise<void> => {
     .selectFrom("classes")
     .select(["date"])
     .where("id", "=", classId)
+    .where("status", "!=", "deleted")
     .executeTakeFirst();
 
   if (!currentClass) {
@@ -732,6 +757,7 @@ const duplicatePreviousGrid = async (classId: string): Promise<void> => {
   const classRows = await db
     .selectFrom("classes")
     .select(["id", "date"])
+    .where("status", "!=", "deleted")
     .execute();
   const previousClass = classRows.find(
     (row) => row.id !== classId && toDateKey(row.date) === previousDateKey
@@ -850,6 +876,7 @@ const handlers: RouteHandlers = {
         "classes.created_at as created_at",
         "classes.updated_at as updated_at",
       ])
+      .where("classes.status", "!=", "deleted")
       .orderBy("classes.date", "asc")
       .execute();
     const rsvpsByClass = await getCurrentUserRsvpsByClass(user.uid);
@@ -928,6 +955,7 @@ const handlers: RouteHandlers = {
         updated_at: new Date(),
       })
       .where("id", "=", params.id)
+      .where("status", "!=", "deleted")
       .returning(["id"])
       .executeTakeFirst();
 
@@ -950,7 +978,18 @@ const handlers: RouteHandlers = {
     return skateClass;
   },
 
+  deleteClass: async ({ params, user }) => {
+    if (!canAssumeRole(user.role, "admin")) {
+      throw new HttpError(403, "Only admins can delete classes");
+    }
+
+    await markClassDeleted(params.id);
+    return { ok: true };
+  },
+
   getClassSignups: async ({ params }) => {
+    await ensureClassExists(params.id);
+
     const rows = await db
       .selectFrom("signups")
       .selectAll()
@@ -960,6 +999,8 @@ const handlers: RouteHandlers = {
   },
 
   getClassAttendance: async ({ params, user }) => {
+    await ensureClassExists(params.id);
+
     const [counts, currentUserRsvp, people] = await Promise.all([
       getAttendanceCounts(params.id),
       getCurrentUserRsvp(params.id, user.uid),
@@ -1074,6 +1115,7 @@ const handlers: RouteHandlers = {
 
   updateClassGridEntry: async ({ params, body, user }) => {
     requireAdmin(user.role);
+    await ensureClassExists(params.id);
     await requireClassGridEntry({
       classId: params.id,
       entryId: params.entryId,
@@ -1129,6 +1171,7 @@ const handlers: RouteHandlers = {
 
   reorderClassGridEntries: async ({ params, body, user }) => {
     requireAdmin(user.role);
+    await ensureClassExists(params.id);
     await updateGridOrder({ classId: params.id, entryIds: body.entryIds });
 
     return getClassGridResponse({ classId: params.id, canManage: true });
@@ -1151,6 +1194,7 @@ const handlers: RouteHandlers = {
         updated_at: new Date(),
       })
       .where("id", "=", params.id)
+      .where("status", "!=", "deleted")
       .returningAll()
       .executeTakeFirst();
 

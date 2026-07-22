@@ -3,6 +3,7 @@ import {
   userRoleSchema,
   manageableUserRoleSchema,
   rsvpStatusSchema,
+  editableClassStatusSchema,
   classStatusSchema,
   chatMessageKindSchema,
   locationSchema,
@@ -38,6 +39,7 @@ import {
 export type UserRole = z.infer<typeof userRoleSchema>;
 export type ManageableUserRole = z.infer<typeof manageableUserRoleSchema>;
 export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
+export type EditableClassStatus = z.infer<typeof editableClassStatusSchema>;
 export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
 export type Location = z.infer<typeof locationSchema>;

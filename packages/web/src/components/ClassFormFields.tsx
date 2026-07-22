@@ -3,17 +3,17 @@ import { Calendar, Clock, MapPin, Plus, Tag, X } from "lucide-react";
 import { ClassIcon } from "./ClassCard.js";
 import { Skeleton } from "./ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
-import type { ClassStatus, Location } from "@skate5/shared";
+import type { EditableClassStatus, Location } from "@skate5/shared";
 
 export type ClassFormValues = {
   date: string;
   time: string;
   locationSlug: string;
   pills: string[];
-  status: ClassStatus;
+  status: EditableClassStatus;
 };
 
-const statusOptions: Array<{ status: ClassStatus; label: string }> = [
+const statusOptions: Array<{ status: EditableClassStatus; label: string }> = [
   { status: "draft", label: "Draft" },
   { status: "published", label: "Published" },
   { status: "cancelled", label: "Cancelled" },
