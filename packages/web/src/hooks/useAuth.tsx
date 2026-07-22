@@ -10,6 +10,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -39,6 +40,7 @@ type AuthState = {
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   setEffectiveRole: (role: UserRole) => Promise<void>;
   logOut: () => Promise<void>;
 };
@@ -141,6 +143,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await finishSignIn(credential.user);
   };
 
+  const resetPassword = async (email: string): Promise<void> => {
+    await sendPasswordResetEmail(getFirebaseAuth(), email);
+  };
+
   const logOut = async (): Promise<void> => {
     await signOut(getFirebaseAuth());
     setStoredEffectiveRole(null);
@@ -172,6 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signIn,
         signInWithEmail,
         signUpWithEmail,
+        resetPassword,
         setEffectiveRole,
         logOut,
       }}
