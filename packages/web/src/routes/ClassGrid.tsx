@@ -1043,6 +1043,7 @@ export const ClassGrid = () => {
   const calendarUrl = `/?month=${backDateKey.slice(0, 7)}`;
   const savingAny = busyAction !== null;
   const showReadyNotice = !canManage && !grid.class.gridPublished;
+  const gridColumnCount = canManage ? 4 : 3;
 
   return (
     <div className="space-y-5">
@@ -1179,14 +1180,13 @@ export const ClassGrid = () => {
         </Card>
       ) : grid.entries.length > 0 ? (
         <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <div className="overflow-x-auto min-[840px]:overflow-x-clip">
+            <table className="w-full min-w-[640px] table-fixed border-collapse text-left text-sm">
               <thead className="bg-muted/60 text-xs font-bold uppercase text-muted-foreground">
                 <tr>
-                  <th className="w-24 px-4 py-3">Time</th>
-                  <th className="min-w-56 px-4 py-3">Class</th>
-                  <th className="w-64 px-4 py-3">Instructors</th>
-                  <th className="min-w-56 px-4 py-3">Notes</th>
+                  <th className="w-28 px-4 py-3">Time</th>
+                  <th className="px-4 py-3">Class</th>
+                  <th className="w-60 px-4 py-3">Instructors</th>
                   {canManage && <th className="w-40 px-4 py-3">Actions</th>}
                 </tr>
               </thead>
@@ -1233,17 +1233,6 @@ export const ClassGrid = () => {
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-foreground/80">
-                          {entry.notes ? (
-                            <p className="line-clamp-3 whitespace-pre-line leading-relaxed">
-                              {entry.notes}
-                            </p>
-                          ) : (
-                            <span className="text-muted-foreground">
-                              No notes
-                            </span>
-                          )}
                         </td>
                         {canManage && (
                           <td className="px-4 py-3">
@@ -1309,10 +1298,32 @@ export const ClassGrid = () => {
                           </td>
                         )}
                       </tr>
+                      {entry.notes && (
+                        <tr
+                          className={cn(
+                            "border-t border-border/40",
+                            expanded && "bg-primary/5"
+                          )}
+                        >
+                          <td
+                            colSpan={gridColumnCount}
+                            className="px-4 pb-3 pt-2 text-foreground/80"
+                          >
+                            <div className="grid gap-1 rounded-md bg-muted/40 px-3 py-2 sm:grid-cols-[5rem_minmax(0,1fr)]">
+                              <span className="text-xs font-bold uppercase text-muted-foreground">
+                                Notes
+                              </span>
+                              <p className="whitespace-pre-line leading-relaxed">
+                                {entry.notes}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {canManage && expanded && (
                         <tr className="border-t border-primary/20 bg-primary/5">
                           <td
-                            colSpan={5}
+                            colSpan={gridColumnCount}
                             className="px-4 py-4"
                           >
                             <GridEntryEditor
