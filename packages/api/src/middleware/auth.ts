@@ -39,7 +39,7 @@ export const authenticate = async (
   const tokenAuthTime = new Date(decoded.auth_time * 1000);
   let row = await db
     .selectFrom("users")
-    .select(["id", "email", "role", "last_login_at"])
+    .select(["id", "email", "role", "last_login_at", "deleted_at"])
     .where("firebase_uid", "=", decoded.uid)
     .executeTakeFirst();
 
@@ -61,8 +61,10 @@ export const authenticate = async (
         role: "member",
         last_login_at: tokenAuthTime,
       })
-      .returning(["id", "email", "role", "last_login_at"])
+      .returning(["id", "email", "role", "last_login_at", "deleted_at"])
       .executeTakeFirstOrThrow();
+  } else if (row.deleted_at) {
+    return reply.status(403).send({ error: "Account has been deleted" });
   } else if (!row.last_login_at || row.last_login_at < tokenAuthTime) {
     await db
       .updateTable("users")

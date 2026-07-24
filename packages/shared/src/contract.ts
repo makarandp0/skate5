@@ -62,6 +62,12 @@ export const contract = {
     body: updateUserSchema,
     response: managedUserSchema,
   },
+  deleteUser: {
+    method: "DELETE",
+    path: "/users/:id",
+    params: z.object({ id: z.string() }),
+    response: z.object({ ok: z.boolean() }),
+  },
   getClasses: {
     method: "GET",
     path: "/classes",

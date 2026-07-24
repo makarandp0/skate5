@@ -20,6 +20,7 @@ export interface UsersTable {
   photo_url: string | null;
   role: string;
   last_login_at: Date | null;
+  deleted_at: Date | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

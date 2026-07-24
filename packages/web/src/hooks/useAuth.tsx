@@ -32,6 +32,13 @@ import type { userSchema } from "@skate5/shared";
 
 type AppUser = z.infer<typeof userSchema>;
 
+export class DeletedAccountError extends Error {
+  constructor() {
+    super("This account has been deleted. Contact an admin if you need access restored.");
+    this.name = "DeletedAccountError";
+  }
+}
+
 type AuthState = {
   firebaseUser: FirebaseUser | null;
   profile: AppUser | null;
@@ -47,6 +54,10 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const isDeletedAccountError = (err: unknown): boolean => {
+  return err instanceof Error && err.message.includes("Account has been deleted");
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
@@ -57,9 +68,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return await api.getMe();
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
+      if (isDeletedAccountError(err)) {
+        throw new DeletedAccountError();
+      }
       if (message.includes("400") || message.includes("403")) {
         setStoredEffectiveRole(null);
-        return api.getMe();
+        try {
+          return await api.getMe();
+        } catch (retryErr) {
+          if (isDeletedAccountError(retryErr)) {
+            throw new DeletedAccountError();
+          }
+          throw retryErr;
+        }
       }
       throw err;
     }
@@ -108,6 +129,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await user.getIdToken(true);
       setProfile(await loadProfile());
+    } catch (err) {
+      if (err instanceof DeletedAccountError) {
+        await signOut(getFirebaseAuth());
+        setStoredEffectiveRole(null);
+        setFirebaseUser(null);
+        setProfile(null);
+      }
+      throw err;
     } finally {
       setLoading(false);
     }
