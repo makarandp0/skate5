@@ -38,7 +38,6 @@ import { authenticate } from "../middleware/auth.js";
 import { sendEmail } from "../lib/email.js";
 
 const countSchema = z.coerce.number().int().nonnegative();
-
 const jsonbStringArray = (values: string[]) => {
   return sql<string[]>`${JSON.stringify(values)}::jsonb`;
 };
@@ -56,6 +55,7 @@ const getUserCount = async (): Promise<number> => {
   const row = await db
     .selectFrom("users")
     .select((eb) => eb.fn.countAll().as("count"))
+    .where("deleted_at", "is", null)
     .executeTakeFirstOrThrow();
 
   return countSchema.parse(row.count);
@@ -66,9 +66,11 @@ const getAttendanceCounts = async (
 ): Promise<ClassAttendanceResponse["counts"]> => {
   const signupRows = await db
     .selectFrom("signups")
-    .select(["user_id", "rsvp", "updated_at"])
-    .where("class_id", "=", classId)
-    .orderBy("updated_at", "desc")
+    .innerJoin("users", "users.id", "signups.user_id")
+    .select(["signups.user_id", "signups.rsvp", "signups.updated_at"])
+    .where("signups.class_id", "=", classId)
+    .where("users.deleted_at", "is", null)
+    .orderBy("signups.updated_at", "desc")
     .execute();
   const totalUsers = await getUserCount();
   const rsvpsByUser = new Map<string, RsvpStatus>();
@@ -109,6 +111,7 @@ const getPeopleWithRsvp = async (
     ])
     .where("signups.class_id", "=", classId)
     .where("signups.rsvp", "=", rsvp)
+    .where("users.deleted_at", "is", null)
     .orderBy("users.display_name", "asc")
     .execute();
 
@@ -138,6 +141,7 @@ const getPeopleWithoutResponse = async (
         eb("signups.rsvp", "=", "none"),
       ])
     )
+    .where("users.deleted_at", "is", null)
     .orderBy("users.display_name", "asc")
     .execute();
 
@@ -290,6 +294,7 @@ const getRequiredUserDisplayName = async (userId: string): Promise<string> => {
     .selectFrom("users")
     .select(["display_name"])
     .where("id", "=", userId)
+    .where("deleted_at", "is", null)
     .executeTakeFirst();
 
   if (!row) {
@@ -496,6 +501,7 @@ const getManagedUsers = async (): Promise<ManagedUser[]> => {
   const rows = await db
     .selectFrom("users")
     .selectAll()
+    .where("deleted_at", "is", null)
     .orderBy("display_name", "asc")
     .orderBy("email", "asc")
     .execute();
@@ -579,6 +585,7 @@ const getGridInstructors = async ({
       "users.display_name as display_name",
       "users.photo_url as photo_url",
       "users.role as role",
+      "users.deleted_at as deleted_at",
     ])
     .orderBy("users.display_name", "asc")
     .execute();
@@ -589,7 +596,10 @@ const getGridInstructors = async ({
       const rsvp = latestRsvpByUser.get(row.user_id) ?? "none";
       return (
         assignedUserIds.has(row.user_id) ||
-        (canManage && canAssumeRole(role, "instructor") && rsvp === "yes")
+        (row.deleted_at === null &&
+          canManage &&
+          canAssumeRole(role, "instructor") &&
+          rsvp === "yes")
       );
     })
     .map((row) =>
@@ -872,6 +882,7 @@ const handlers: RouteHandlers = {
       .selectFrom("users")
       .select(["role"])
       .where("id", "=", params.id)
+      .where("deleted_at", "is", null)
       .executeTakeFirst();
 
     if (!current) {
@@ -911,6 +922,39 @@ const handlers: RouteHandlers = {
     const row = await update.returningAll().executeTakeFirstOrThrow();
 
     return toManagedUser(row);
+  },
+
+  deleteUser: async ({ params, user }) => {
+    requireAdminAccess(user.role, "Only admins can manage users");
+
+    if (params.id === user.uid) {
+      throw new HttpError(400, "Admins cannot delete their own account");
+    }
+
+    const current = await db
+      .selectFrom("users")
+      .select(["id", "role"])
+      .where("id", "=", params.id)
+      .where("deleted_at", "is", null)
+      .executeTakeFirst();
+
+    if (!current) {
+      throw new HttpError(404, "User not found");
+    }
+
+    const currentRole = userRoleSchema.parse(current.role);
+    if (currentRole === "developer") {
+      throw new HttpError(403, "Developer accounts cannot be deleted here");
+    }
+
+    await db
+      .updateTable("users")
+      .set({ deleted_at: new Date(), updated_at: new Date() })
+      .where("id", "=", params.id)
+      .where("deleted_at", "is", null)
+      .executeTakeFirstOrThrow();
+
+    return { ok: true };
   },
 
   getClasses: async ({ user }) => {

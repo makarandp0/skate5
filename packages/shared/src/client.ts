@@ -75,7 +75,12 @@ export const createApiClient = (options: {
         body,
       });
       if (!res.ok) {
-        throw new Error(`API error: ${String(res.status)} ${res.statusText}`);
+        const errorPayload: unknown = await res.json().catch(() => null);
+        const parsedError = z.object({ error: z.string() }).safeParse(errorPayload);
+        const message = parsedError.success
+          ? parsedError.data.error
+          : res.statusText;
+        throw new Error(`API error: ${String(res.status)} ${message}`);
       }
       return res.json() as Promise<unknown>;
     };

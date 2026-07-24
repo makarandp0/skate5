@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   Check,
@@ -8,6 +9,7 @@ import {
   Pencil,
   RefreshCw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -63,7 +65,7 @@ const formatDateTime = (value: string | null): string => {
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;
-  return "Could not update users.";
+  return "Could not manage users.";
 };
 
 const getRoleClassName = (role: UserRole): string => {
@@ -372,9 +374,14 @@ export const Users = () => {
   const [sort, setSort] = useState<UserSort>({ key: null, direction: "desc" });
   const [loading, setLoading] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
+  const [deletedUserName, setDeletedUserName] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [confirmingDeleteUserId, setConfirmingDeleteUserId] = useState<
+    string | null
+  >(null);
   const [draftUser, setDraftUser] = useState<DraftUserChange>({
     displayName: "",
     photoUrl: "",
@@ -385,7 +392,9 @@ export const Users = () => {
     setLoading(true);
     setError(null);
     setSavedUserId(null);
+    setDeletedUserName(null);
     setEditingUserId(null);
+    setConfirmingDeleteUserId(null);
 
     try {
       setUsers(await api.getUsers());
@@ -427,11 +436,12 @@ export const Users = () => {
     draft: DraftUserChange
   ): Promise<void> => {
     const body = getUserUpdateInput(user, draft);
-    if (!body || savingUserId) return;
+    if (!body || savingUserId || deletingUserId) return;
 
     setSavingUserId(user.id);
     setError(null);
     setSavedUserId(null);
+    setDeletedUserName(null);
 
     try {
       const updatedUser = await api.updateUser({
@@ -444,6 +454,7 @@ export const Users = () => {
         )
       );
       setEditingUserId(null);
+      setConfirmingDeleteUserId(null);
       setSavedUserId(updatedUser.id);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -455,7 +466,9 @@ export const Users = () => {
   const beginUserChange = (user: ManagedUser): void => {
     setError(null);
     setSavedUserId(null);
+    setDeletedUserName(null);
     setEditingUserId(user.id);
+    setConfirmingDeleteUserId(null);
     setDraftUser({
       displayName: user.displayName,
       photoUrl: user.photoUrl ?? "",
@@ -464,6 +477,30 @@ export const Users = () => {
           ? null
           : getManageableRole(user.role),
     });
+  };
+
+  const deleteUser = async (user: ManagedUser): Promise<void> => {
+    if (savingUserId || deletingUserId) return;
+    if (user.id === profile?.id || user.role === "developer") return;
+
+    setDeletingUserId(user.id);
+    setError(null);
+    setSavedUserId(null);
+    setDeletedUserName(null);
+    setEditingUserId(null);
+    setConfirmingDeleteUserId(null);
+
+    try {
+      await api.deleteUser({ params: { id: user.id } });
+      setUsers((currentUsers) =>
+        currentUsers.filter((currentUser) => currentUser.id !== user.id)
+      );
+      setDeletedUserName(user.displayName);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setDeletingUserId(null);
+    }
   };
 
   return (
@@ -496,10 +533,10 @@ export const Users = () => {
         </div>
       )}
 
-      {savedUserId && (
+      {(savedUserId || deletedUserName) && (
         <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-200">
           <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-          <p>User updated.</p>
+          <p>{deletedUserName ? "User deleted." : "User updated."}</p>
         </div>
       )}
 
@@ -567,7 +604,10 @@ export const Users = () => {
             <tbody>
               {displayedUsers.map((user) => {
                 const disabled =
-                  savingUserId !== null && savingUserId !== user.id;
+                  (savingUserId !== null && savingUserId !== user.id) ||
+                  (deletingUserId !== null && deletingUserId !== user.id);
+                const deleteLocked =
+                  user.id === profile?.id || user.role === "developer";
                 const roleLockedLabel =
                   user.id === profile?.id
                     ? "Current user"
@@ -575,7 +615,9 @@ export const Users = () => {
                       ? "Locked"
                       : null;
                 const saving = savingUserId === user.id;
+                const deleting = deletingUserId === user.id;
                 const editing = editingUserId === user.id;
+                const confirmingDelete = confirmingDeleteUserId === user.id;
 
                 return (
                   <Fragment key={user.id}>
@@ -614,24 +656,46 @@ export const Users = () => {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="sticky right-0 z-10 bg-background/95 py-3 pl-3 text-right">
-                        <Button
-                          type="button"
-                          variant={editing ? "secondary" : "outline"}
-                          size="icon"
-                          aria-label={`Edit ${user.displayName}`}
-                          title={`Edit ${user.displayName}`}
-                          disabled={disabled}
-                          onClick={() => {
-                            if (editing) {
-                              setEditingUserId(null);
-                              return;
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant={editing ? "secondary" : "outline"}
+                            size="icon"
+                            aria-label={`Edit ${user.displayName}`}
+                            title={`Edit ${user.displayName}`}
+                            disabled={disabled || deleting}
+                            onClick={() => {
+                              if (editing) {
+                                setEditingUserId(null);
+                                return;
+                              }
+                              beginUserChange(user);
+                            }}
+                            className="h-8 w-8"
+                          >
+                            {editing ? <X size={15} /> : <Pencil size={15} />}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            aria-label={`Delete ${user.displayName}`}
+                            title={`Delete ${user.displayName}`}
+                            disabled={
+                              disabled || deleteLocked || editing || confirmingDelete
                             }
-                            beginUserChange(user);
-                          }}
-                          className="h-8 w-8"
-                        >
-                          {editing ? <X size={15} /> : <Pencil size={15} />}
-                        </Button>
+                            onClick={() => {
+                              setError(null);
+                              setSavedUserId(null);
+                              setDeletedUserName(null);
+                              setEditingUserId(null);
+                              setConfirmingDeleteUserId(user.id);
+                            }}
+                            className="h-8 w-8"
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                     {editing && (
@@ -653,6 +717,60 @@ export const Users = () => {
                         </td>
                       </tr>
                     )}
+                    {confirmingDelete && !editing && (
+                      <tr className="border-b border-border/70 bg-red-50/70 dark:bg-red-950/20">
+                        <td colSpan={5} className="px-3 py-3">
+                          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle
+                                size={16}
+                                className="mt-0.5 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold">
+                                  Delete {user.displayName}?
+                                </p>
+                                <p className="mt-1 text-sm">
+                                  This hides the account from active user lists
+                                  while keeping class history.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setConfirmingDeleteUserId(null);
+                                }}
+                                disabled={deleting}
+                                className="bg-white/80 hover:bg-white dark:bg-background/80 dark:hover:bg-background"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={() => {
+                                  void deleteUser(user);
+                                }}
+                                disabled={deleting}
+                              >
+                                {deleting ? (
+                                  <RefreshCw
+                                    size={16}
+                                    className="animate-spin"
+                                  />
+                                ) : (
+                                  <Trash2 size={16} />
+                                )}
+                                Delete user
+                              </Button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}
@@ -663,7 +781,10 @@ export const Users = () => {
         <div className="grid gap-3 sm:hidden">
           {displayedUsers.map((user) => {
             const disabled =
-              savingUserId !== null && savingUserId !== user.id;
+              (savingUserId !== null && savingUserId !== user.id) ||
+              (deletingUserId !== null && deletingUserId !== user.id);
+            const deleteLocked =
+              user.id === profile?.id || user.role === "developer";
             const roleLockedLabel =
               user.id === profile?.id
                 ? "Current user"
@@ -671,7 +792,9 @@ export const Users = () => {
                   ? "Locked"
                   : null;
             const saving = savingUserId === user.id;
+            const deleting = deletingUserId === user.id;
             const editing = editingUserId === user.id;
+            const confirmingDelete = confirmingDeleteUserId === user.id;
 
             return (
               <div
@@ -700,24 +823,46 @@ export const Users = () => {
                   >
                     {getRoleLabel(user.role)}
                   </span>
-                  <Button
-                    type="button"
-                    variant={editing ? "secondary" : "outline"}
-                    size="icon"
-                    aria-label={`Edit ${user.displayName}`}
-                    title={`Edit ${user.displayName}`}
-                    disabled={disabled}
-                    onClick={() => {
-                      if (editing) {
-                        setEditingUserId(null);
-                        return;
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      type="button"
+                      variant={editing ? "secondary" : "outline"}
+                      size="icon"
+                      aria-label={`Edit ${user.displayName}`}
+                      title={`Edit ${user.displayName}`}
+                      disabled={disabled || deleting}
+                      onClick={() => {
+                        if (editing) {
+                          setEditingUserId(null);
+                          return;
+                        }
+                        beginUserChange(user);
+                      }}
+                      className="h-8 w-8"
+                    >
+                      {editing ? <X size={15} /> : <Pencil size={15} />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      aria-label={`Delete ${user.displayName}`}
+                      title={`Delete ${user.displayName}`}
+                      disabled={
+                        disabled || deleteLocked || editing || confirmingDelete
                       }
-                      beginUserChange(user);
-                    }}
-                    className="h-8 w-8 shrink-0"
-                  >
-                    {editing ? <X size={15} /> : <Pencil size={15} />}
-                  </Button>
+                      onClick={() => {
+                        setError(null);
+                        setSavedUserId(null);
+                        setDeletedUserName(null);
+                        setEditingUserId(null);
+                        setConfirmingDeleteUserId(user.id);
+                      }}
+                      className="h-8 w-8"
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
                 </div>
                 {editing && (
                   <div className="mt-3 border-t border-border/70 bg-muted/30 px-3 py-3">
@@ -734,6 +879,50 @@ export const Users = () => {
                         void updateUser(user, draftUser);
                       }}
                     />
+                  </div>
+                )}
+                {confirmingDelete && !editing && (
+                  <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">
+                          Delete {user.displayName}?
+                        </p>
+                        <p className="mt-1 text-sm">
+                          This hides the account from active user lists while
+                          keeping class history.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col-reverse gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setConfirmingDeleteUserId(null);
+                        }}
+                        disabled={deleting}
+                        className="bg-white/80 hover:bg-white dark:bg-background/80 dark:hover:bg-background"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => {
+                          void deleteUser(user);
+                        }}
+                        disabled={deleting}
+                      >
+                        {deleting ? (
+                          <RefreshCw size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                        Delete user
+                      </Button>
+                    </div>
                   </div>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">

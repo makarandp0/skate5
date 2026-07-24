@@ -1,7 +1,7 @@
 import { useRef, useState, type SyntheticEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { FirebaseError } from "firebase/app";
-import { useAuth } from "../hooks/useAuth.js";
+import { DeletedAccountError, useAuth } from "../hooks/useAuth.js";
 import { Button } from "../components/ui/Button.js";
 import brandBanner from "../assets/skate-journeys-banner.png";
 
@@ -17,6 +17,10 @@ const getAuthErrorCode = (err: unknown): string | null => {
 };
 
 const getAuthErrorMessage = (err: unknown): string => {
+  if (err instanceof DeletedAccountError) {
+    return err.message;
+  }
+
   const code = getAuthErrorCode(err);
 
   if (code === "auth/email-already-in-use") {
