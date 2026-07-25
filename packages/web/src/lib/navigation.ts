@@ -1,5 +1,7 @@
 import {
   Calendar,
+  History,
+  Info,
   Mail,
   Settings,
   User,
@@ -13,6 +15,7 @@ export type AppNavItem = {
   icon: LucideIcon;
   label: string;
   minimumRole?: UserRole;
+  public?: boolean;
 };
 
 export const appNavItems: AppNavItem[] = [
@@ -20,6 +23,7 @@ export const appNavItems: AppNavItem[] = [
     to: "/",
     icon: Calendar,
     label: "Classes",
+    public: true,
   },
   {
     to: "/profile",
@@ -30,6 +34,12 @@ export const appNavItems: AppNavItem[] = [
     to: "/email",
     icon: Mail,
     label: "Email",
+    minimumRole: "developer",
+  },
+  {
+    to: "/events",
+    icon: History,
+    label: "Events",
     minimumRole: "developer",
   },
   {
@@ -44,12 +54,18 @@ export const appNavItems: AppNavItem[] = [
     label: "Config",
     minimumRole: "developer",
   },
+  {
+    to: "/about",
+    icon: Info,
+    label: "About",
+    public: true,
+  },
 ];
 
 export const getVisibleNavItems = (
   effectiveRole: UserRole | null
 ): AppNavItem[] => {
-  if (!effectiveRole) return appNavItems.filter((item) => item.to === "/");
+  if (!effectiveRole) return appNavItems.filter((item) => item.public === true);
 
   return appNavItems.filter((item) => {
     if (!item.minimumRole) return true;

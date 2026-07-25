@@ -177,9 +177,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logOut = async (): Promise<void> => {
-    await signOut(getFirebaseAuth());
-    setStoredEffectiveRole(null);
-    setProfile(null);
+    try {
+      if (firebaseUser) {
+        await api.recordLogout();
+      }
+    } catch (err) {
+      console.warn("Could not record logout event:", err);
+    } finally {
+      await signOut(getFirebaseAuth());
+      setStoredEffectiveRole(null);
+      setProfile(null);
+    }
   };
 
   const setEffectiveRole = async (role: UserRole): Promise<void> => {

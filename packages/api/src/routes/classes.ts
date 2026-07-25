@@ -33,13 +33,32 @@ import {
   toGridInstructor,
   toChat,
   toChatMessage,
+  toSystemEvent,
 } from "../db/mappers.js";
 import { authenticate } from "../middleware/auth.js";
 import { sendEmail } from "../lib/email.js";
+import {
+  recordClassCreated,
+  recordClassDeleted,
+  recordClassUpdated,
+  recordEmailSent,
+  recordGridPublished,
+  recordUserDeleted,
+  recordUserLoggedOut,
+  recordUserRoleChanged,
+  recordUserUpdated,
+} from "../lib/system-events.js";
 
 const countSchema = z.coerce.number().int().nonnegative();
 const jsonbStringArray = (values: string[]) => {
   return sql<string[]>`${JSON.stringify(values)}::jsonb`;
+};
+
+const stringArraysEqual = (left: string[], right: string[]): boolean => {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
 };
 
 class HttpError extends Error {
@@ -880,7 +899,7 @@ const handlers: RouteHandlers = {
 
     const current = await db
       .selectFrom("users")
-      .select(["role"])
+      .select(["display_name", "photo_url", "role"])
       .where("id", "=", params.id)
       .where("deleted_at", "is", null)
       .executeTakeFirst();
@@ -900,26 +919,64 @@ const handlers: RouteHandlers = {
       }
     }
 
-    let update = db
-      .updateTable("users")
-      .set({
-        updated_at: new Date(),
-      })
-      .where("id", "=", params.id);
-
-    if (body.displayName !== undefined) {
-      update = update.set({ display_name: body.displayName });
+    const changedFields: string[] = [];
+    if (
+      body.displayName !== undefined &&
+      body.displayName !== current.display_name
+    ) {
+      changedFields.push("displayName");
     }
 
-    if (body.photoUrl !== undefined) {
-      update = update.set({ photo_url: body.photoUrl });
+    if (body.photoUrl !== undefined && body.photoUrl !== current.photo_url) {
+      changedFields.push("photoUrl");
     }
 
-    if (body.role !== undefined) {
-      update = update.set({ role: body.role });
-    }
+    const nextRole = body.role ?? currentRole;
+    const roleChanged = nextRole !== currentRole;
 
-    const row = await update.returningAll().executeTakeFirstOrThrow();
+    const row = await db.transaction().execute(async (trx) => {
+      let update = trx
+        .updateTable("users")
+        .set({
+          updated_at: new Date(),
+        })
+        .where("id", "=", params.id);
+
+      if (body.displayName !== undefined) {
+        update = update.set({ display_name: body.displayName });
+      }
+
+      if (body.photoUrl !== undefined) {
+        update = update.set({ photo_url: body.photoUrl });
+      }
+
+      if (body.role !== undefined) {
+        update = update.set({ role: body.role });
+      }
+
+      const updated = await update.returningAll().executeTakeFirstOrThrow();
+
+      if (changedFields.length > 0) {
+        await recordUserUpdated({
+          actorUserId: user.uid,
+          subjectUserId: params.id,
+          changedFields,
+          executor: trx,
+        });
+      }
+
+      if (roleChanged) {
+        await recordUserRoleChanged({
+          actorUserId: user.uid,
+          subjectUserId: params.id,
+          previousRole: currentRole,
+          nextRole,
+          executor: trx,
+        });
+      }
+
+      return updated;
+    });
 
     return toManagedUser(row);
   },
@@ -947,14 +1004,43 @@ const handlers: RouteHandlers = {
       throw new HttpError(403, "Developer accounts cannot be deleted here");
     }
 
-    await db
-      .updateTable("users")
-      .set({ deleted_at: new Date(), updated_at: new Date() })
-      .where("id", "=", params.id)
-      .where("deleted_at", "is", null)
-      .executeTakeFirstOrThrow();
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .updateTable("users")
+        .set({ deleted_at: new Date(), updated_at: new Date() })
+        .where("id", "=", params.id)
+        .where("deleted_at", "is", null)
+        .executeTakeFirstOrThrow();
+
+      await recordUserDeleted({
+        actorUserId: user.uid,
+        subjectUserId: params.id,
+        executor: trx,
+      });
+    });
 
     return { ok: true };
+  },
+
+  recordLogout: async ({ user }) => {
+    await recordUserLoggedOut({ userId: user.uid });
+    return { ok: true };
+  },
+
+  getSystemEvents: async ({ user }) => {
+    if (!canAssumeRole(user.role, "developer")) {
+      throw new HttpError(403, "Only developers can view system events");
+    }
+
+    const rows = await db
+      .selectFrom("system_events")
+      .selectAll()
+      .orderBy("occurred_at", "desc")
+      .orderBy("id", "desc")
+      .limit(100)
+      .execute();
+
+    return rows.map(toSystemEvent);
   },
 
   getClasses: async ({ user }) => {
@@ -1027,6 +1113,14 @@ const handlers: RouteHandlers = {
       .executeTakeFirstOrThrow();
 
     const userDisplayName = await getUserDisplayName(user.uid);
+    await recordClassCreated({
+      actorUserId: user.uid,
+      classId: row.id,
+      date: body.date,
+      time: body.time ?? null,
+      status: body.status,
+      locationSlug: body.locationSlug,
+    });
     await createSystemClassMessage({
       classId: row.id,
       userId: user.uid,
@@ -1047,6 +1141,25 @@ const handlers: RouteHandlers = {
     }
 
     await ensureActiveLocationExists(body.locationSlug);
+
+    const current = await getClassById(params.id);
+    if (!current) {
+      throw new HttpError(404, "Class not found");
+    }
+
+    const changedFields: string[] = [];
+    if ((body.time ?? null) !== current.time) {
+      changedFields.push("time");
+    }
+    if (body.locationSlug !== current.locationSlug) {
+      changedFields.push("locationSlug");
+    }
+    if (body.status !== current.status) {
+      changedFields.push("status");
+    }
+    if (!stringArraysEqual(body.pills, current.pills)) {
+      changedFields.push("pills");
+    }
 
     const row = await db
       .updateTable("classes")
@@ -1069,6 +1182,17 @@ const handlers: RouteHandlers = {
     }
 
     const userDisplayName = await getUserDisplayName(user.uid);
+    if (changedFields.length > 0) {
+      await recordClassUpdated({
+        actorUserId: user.uid,
+        classId: row.id,
+        changedFields,
+        date: current.date,
+        time: body.time ?? null,
+        status: body.status,
+        locationSlug: body.locationSlug,
+      });
+    }
     await createSystemClassMessage({
       classId: row.id,
       userId: user.uid,
@@ -1088,7 +1212,19 @@ const handlers: RouteHandlers = {
       throw new HttpError(403, "Only admins can delete classes");
     }
 
+    const current = await getClassById(params.id);
+    if (!current) {
+      throw new HttpError(404, "Class not found");
+    }
+
     await markClassDeleted(params.id);
+    await recordClassDeleted({
+      actorUserId: user.uid,
+      classId: params.id,
+      date: current.date,
+      time: current.time,
+      locationSlug: current.locationSlug,
+    });
     return { ok: true };
   },
 
@@ -1299,6 +1435,11 @@ const handlers: RouteHandlers = {
   publishClassGrid: async ({ params, body, user }) => {
     requireAdmin(user.role);
 
+    const current = await getClassById(params.id);
+    if (!current) {
+      throw new HttpError(404, "Class not found");
+    }
+
     const row = await db
       .updateTable("classes")
       .set({
@@ -1315,6 +1456,14 @@ const handlers: RouteHandlers = {
     }
 
     const userDisplayName = await getUserDisplayName(user.uid);
+    if (current.gridPublished !== body.published) {
+      await recordGridPublished({
+        actorUserId: user.uid,
+        classId: params.id,
+        published: body.published,
+        date: current.date,
+      });
+    }
     await createSystemClassMessage({
       classId: params.id,
       userId: user.uid,
@@ -1331,9 +1480,20 @@ const handlers: RouteHandlers = {
       throw new HttpError(403, "Only admins can send email");
     }
 
-    return sendEmail({
+    const response = await sendEmail({
       input: body,
     });
+
+    await recordEmailSent({
+      actorUserId: user.uid,
+      emailId: response.id,
+      subject: body.subject,
+      toCount: body.to.length,
+      ccCount: body.cc.length,
+      bccCount: body.bcc.length,
+    });
+
+    return response;
   },
 };
 

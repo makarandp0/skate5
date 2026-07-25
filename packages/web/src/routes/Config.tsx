@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   firebaseClientConfigSchema,
   type FirebaseClientConfig,
@@ -6,17 +6,12 @@ import {
 import {
   Activity,
   CheckCircle2,
-  Clipboard,
-  QrCode,
   Server,
-  Smartphone,
   XCircle,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { getApiAuthHeaders } from "../lib/api.js";
-import { createQrMatrix } from "../lib/qr.js";
 import { cn } from "../lib/utils.js";
-import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
 
@@ -35,14 +30,6 @@ type DevStatus = {
 };
 
 type DevEnvEntry = DevStatus["env"][number];
-
-const getDefaultAppUrl = (): string => {
-  if (import.meta.env.DEV && import.meta.env.VITE_DEV_ORIGIN) {
-    return import.meta.env.VITE_DEV_ORIGIN;
-  }
-
-  return window.location.origin;
-};
 
 const getField = (value: unknown, key: string): unknown => {
   if (typeof value !== "object" || value === null) return undefined;
@@ -202,47 +189,12 @@ const StatusBadge = ({ online }: { online: boolean }) => {
   );
 };
 
-const QrPreview = ({ matrix }: { matrix: boolean[][] }) => {
-  const quietZone = 4;
-  const viewBoxSize = matrix.length + quietZone * 2;
-
-  return (
-    <svg
-      className="aspect-square w-full max-w-[180px] border border-border bg-white"
-      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
-      shapeRendering="crispEdges"
-      aria-label="QR code for app URL"
-      role="img"
-    >
-      <rect width={viewBoxSize} height={viewBoxSize} fill="white" />
-      {matrix.flatMap((row, y) =>
-        row.map((dark, x) =>
-          dark ? (
-            <rect
-              key={`${String(x)}-${String(y)}`}
-              x={x + quietZone}
-              y={y + quietZone}
-              width="1"
-              height="1"
-              fill="black"
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  );
-};
-
 export const Config = () => {
   const { profile } = useAuth();
-  const [appUrl, setAppUrl] = useState(getDefaultAppUrl);
   const [devStatus, setDevStatus] = useState<DevStatus | null>(null);
   const [firebaseConfig, setFirebaseConfig] =
     useState<FirebaseClientConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
-    "idle"
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -274,14 +226,6 @@ export const Config = () => {
     };
   }, []);
 
-  const qrMatrix = useMemo(() => {
-    try {
-      return createQrMatrix(appUrl);
-    } catch {
-      return null;
-    }
-  }, [appUrl]);
-
   const clientRows = [
     { label: "Mode", value: import.meta.env.MODE },
     { label: "Dev build", value: String(import.meta.env.DEV) },
@@ -289,19 +233,6 @@ export const Config = () => {
     { label: "Base URL", value: import.meta.env.BASE_URL },
     { label: "Authenticated as", value: profile?.email ?? "Unknown" },
   ];
-
-  const copyAppUrl = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(appUrl);
-      setCopyState("copied");
-    } catch {
-      setCopyState("failed");
-    } finally {
-      window.setTimeout(() => {
-        setCopyState("idle");
-      }, 1800);
-    }
-  };
 
   if (loading) {
     return (
@@ -325,61 +256,13 @@ export const Config = () => {
         <StatusBadge online={devStatus?.status === "ok"} />
       </div>
 
-      <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-        <Card className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Smartphone size={18} />
-            <h2 className="font-medium">Mobile URL</h2>
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-xs font-medium text-muted-foreground"
-              htmlFor="app-url"
-            >
-              App URL
-            </label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                id="app-url"
-                value={appUrl}
-                onChange={(event) => {
-                  setAppUrl(event.target.value);
-                }}
-                className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void copyAppUrl();
-                }}
-              >
-                <Clipboard size={16} />
-                {copyState === "copied"
-                  ? "Copied"
-                  : copyState === "failed"
-                    ? "Failed"
-                    : "Copy"}
-              </Button>
-            </div>
-          </div>
-          <InfoGrid rows={clientRows} />
-        </Card>
-
-        <Card className="flex flex-col items-center justify-center gap-3">
-          <div className="flex items-center gap-2 self-start">
-            <QrCode size={18} />
-            <h2 className="font-medium">QR</h2>
-          </div>
-          {qrMatrix ? (
-            <QrPreview matrix={qrMatrix} />
-          ) : (
-            <div className="flex aspect-square w-full items-center justify-center rounded-md border border-border text-center text-sm text-muted-foreground">
-              URL is too long
-            </div>
-          )}
-        </Card>
-      </section>
+      <Card className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Activity size={18} />
+          <h2 className="font-medium">Client</h2>
+        </div>
+        <InfoGrid rows={clientRows} />
+      </Card>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card className="space-y-4">

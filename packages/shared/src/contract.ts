@@ -24,6 +24,7 @@ import {
   reorderGridEntriesSchema,
   publishGridSchema,
   firebaseClientConfigSchema,
+  systemEventSchema,
   sendEmailSchema,
   sendEmailResponseSchema,
   locationSchema,
@@ -67,6 +68,16 @@ export const contract = {
     path: "/users/:id",
     params: z.object({ id: z.string() }),
     response: z.object({ ok: z.boolean() }),
+  },
+  recordLogout: {
+    method: "POST",
+    path: "/auth/logout",
+    response: z.object({ ok: z.boolean() }),
+  },
+  getSystemEvents: {
+    method: "GET",
+    path: "/system-events",
+    response: z.array(systemEventSchema),
   },
   getClasses: {
     method: "GET",

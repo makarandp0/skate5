@@ -30,6 +30,21 @@ export const classStatusSchema = z.enum([
 
 export const chatMessageKindSchema = z.enum(["user", "system"]);
 
+export const systemEventTypeSchema = z.enum([
+  "auth.login",
+  "auth.logout",
+  "class.created",
+  "class.deleted",
+  "class.updated",
+  "email.sent",
+  "grid.published",
+  "grid.unpublished",
+  "user.created",
+  "user.deleted",
+  "user.role_changed",
+  "user.updated",
+]);
+
 export const classPillSchema = z.string().trim().min(1).max(160);
 
 export const locationSchema = z.object({
@@ -178,6 +193,18 @@ export const chatMessageSchema = z.object({
 export const classChatResponseSchema = z.object({
   chat: chatSchema,
   messages: z.array(chatMessageSchema),
+});
+
+export const systemEventSchema = z.object({
+  id: z.string(),
+  type: systemEventTypeSchema,
+  actorUserId: z.string().nullable(),
+  subjectUserId: z.string().nullable(),
+  entityType: z.string().nullable(),
+  entityId: z.string().nullable(),
+  summary: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  occurredAt: z.iso.datetime(),
 });
 
 export const firebaseClientConfigSchema = z.object({
