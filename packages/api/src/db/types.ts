@@ -10,6 +10,7 @@ export interface Database {
   chats: ChatsTable;
   chat_messages: ChatMessagesTable;
   chat_members: ChatMembersTable;
+  system_events: SystemEventsTable;
 }
 
 export interface UsersTable {
@@ -97,4 +98,16 @@ export interface ChatMembersTable {
   chat_id: string;
   user_id: string;
   joined_at: Generated<Date>;
+}
+
+export interface SystemEventsTable {
+  id: Generated<string>;
+  type: string;
+  actor_user_id: string | null;
+  subject_user_id: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  summary: string;
+  metadata: Generated<Record<string, unknown>>;
+  occurred_at: Generated<Date>;
 }

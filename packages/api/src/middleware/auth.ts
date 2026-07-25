@@ -6,6 +6,10 @@ import {
   type UserRole,
 } from "@skate5/shared";
 import { db } from "../db/index.js";
+import {
+  recordUserCreated,
+  recordUserLoggedIn,
+} from "../lib/system-events.js";
 
 export interface AuthUser {
   uid: string;
@@ -37,9 +41,18 @@ export const authenticate = async (
   }
 
   const tokenAuthTime = new Date(decoded.auth_time * 1000);
+  let shouldRecordUserCreated = false;
+  let shouldRecordLogin = false;
   let row = await db
     .selectFrom("users")
-    .select(["id", "email", "role", "last_login_at", "deleted_at"])
+    .select([
+      "id",
+      "email",
+      "display_name",
+      "role",
+      "last_login_at",
+      "deleted_at",
+    ])
     .where("firebase_uid", "=", decoded.uid)
     .executeTakeFirst();
 
@@ -61,8 +74,17 @@ export const authenticate = async (
         role: "member",
         last_login_at: tokenAuthTime,
       })
-      .returning(["id", "email", "role", "last_login_at", "deleted_at"])
+      .returning([
+        "id",
+        "email",
+        "display_name",
+        "role",
+        "last_login_at",
+        "deleted_at",
+      ])
       .executeTakeFirstOrThrow();
+    shouldRecordUserCreated = true;
+    shouldRecordLogin = true;
   } else if (row.deleted_at) {
     return reply.status(403).send({ error: "Account has been deleted" });
   } else if (!row.last_login_at || row.last_login_at < tokenAuthTime) {
@@ -76,6 +98,24 @@ export const authenticate = async (
       ...row,
       last_login_at: tokenAuthTime,
     };
+    shouldRecordLogin = true;
+  }
+
+  if (shouldRecordUserCreated) {
+    await recordUserCreated({
+      userId: row.id,
+      displayName: row.display_name,
+      email: row.email,
+    });
+  }
+
+  if (shouldRecordLogin) {
+    await recordUserLoggedIn({
+      userId: row.id,
+      displayName: row.display_name,
+      email: row.email,
+      authTime: tokenAuthTime,
+    });
   }
 
   const actualRole = userRoleSchema.parse(row.role);

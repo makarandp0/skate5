@@ -3,6 +3,7 @@ import { canAssumeRole, type UserRole } from "@skate5/shared";
 import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import { ThemeProvider } from "./hooks/useTheme.js";
 import { Header } from "./components/Header.js";
+import { About } from "./routes/About.js";
 import { Login } from "./routes/Login.js";
 import { ClassList } from "./routes/ClassList.js";
 import { ClassCreate } from "./routes/ClassCreate.js";
@@ -11,6 +12,7 @@ import { ClassGrid } from "./routes/ClassGrid.js";
 import { ClassChat } from "./routes/ClassChat.js";
 import { Profile } from "./routes/Profile.js";
 import { Email } from "./routes/Email.js";
+import { Events } from "./routes/Events.js";
 import { Users } from "./routes/Users.js";
 import { Config } from "./routes/Config.js";
 import type { ReactNode } from "react";
@@ -54,6 +56,7 @@ export const App = () => {
           <Header />
           <main className="relative mx-auto max-w-4xl px-4 pb-10 pt-6 sm:px-6">
             <Routes>
+              <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/"
@@ -108,6 +111,14 @@ export const App = () => {
                 element={
                   <RequireRole minimumRole="developer">
                     <Email />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/events"
+                element={
+                  <RequireRole minimumRole="developer">
+                    <Events />
                   </RequireRole>
                 }
               />

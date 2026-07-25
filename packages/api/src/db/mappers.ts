@@ -7,6 +7,7 @@ import {
   gridInstructorSchema,
   managedUserSchema,
   locationSchema,
+  systemEventSchema,
   userRoleSchema,
   type User,
   type ManagedUser,
@@ -20,6 +21,7 @@ import {
   type GridInstructor,
   type Chat,
   type ChatMessage,
+  type SystemEvent,
 } from "@skate5/shared";
 
 interface UserRow {
@@ -159,6 +161,18 @@ interface ChatMessageRow {
   created_at: Date;
 }
 
+interface SystemEventRow {
+  id: string;
+  type: string;
+  actor_user_id: string | null;
+  subject_user_id: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  summary: string;
+  metadata: unknown;
+  occurred_at: Date;
+}
+
 const assertClassStatus = (s: string): SkateClass["status"] => {
   return classStatusSchema.parse(s);
 };
@@ -279,4 +293,18 @@ export const toChatMessage = (row: ChatMessageRow): ChatMessage => {
     text: row.text,
     createdAt: row.created_at.toISOString(),
   };
+};
+
+export const toSystemEvent = (row: SystemEventRow): SystemEvent => {
+  return systemEventSchema.parse({
+    id: row.id,
+    type: row.type,
+    actorUserId: row.actor_user_id,
+    subjectUserId: row.subject_user_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    summary: row.summary,
+    metadata: row.metadata,
+    occurredAt: row.occurred_at.toISOString(),
+  });
 };

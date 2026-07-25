@@ -6,6 +6,7 @@ import {
   editableClassStatusSchema,
   classStatusSchema,
   chatMessageKindSchema,
+  systemEventTypeSchema,
   locationSchema,
   userSchema,
   managedUserSchema,
@@ -22,6 +23,7 @@ import {
   chatSchema,
   chatMessageSchema,
   classChatResponseSchema,
+  systemEventSchema,
   firebaseClientConfigSchema,
   createClassSchema,
   updateClassSchema,
@@ -44,6 +46,7 @@ export type RsvpStatus = z.infer<typeof rsvpStatusSchema>;
 export type EditableClassStatus = z.infer<typeof editableClassStatusSchema>;
 export type ClassStatus = z.infer<typeof classStatusSchema>;
 export type ChatMessageKind = z.infer<typeof chatMessageKindSchema>;
+export type SystemEventType = z.infer<typeof systemEventTypeSchema>;
 export type Location = z.infer<typeof locationSchema>;
 export type User = z.infer<typeof userSchema>;
 export type ManagedUser = z.infer<typeof managedUserSchema>;
@@ -64,6 +67,7 @@ export type GridCopySource = z.infer<typeof gridCopySourceSchema>;
 export type Chat = z.infer<typeof chatSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ClassChatResponse = z.infer<typeof classChatResponseSchema>;
+export type SystemEvent = z.infer<typeof systemEventSchema>;
 export type FirebaseClientConfig = z.infer<typeof firebaseClientConfigSchema>;
 export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;
 
