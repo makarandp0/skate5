@@ -27,7 +27,7 @@ const createEmailOptions = ({
     to: input.to,
     cc: input.cc.length > 0 ? input.cc : undefined,
     bcc: input.bcc.length > 0 ? input.bcc : undefined,
-    replyTo: config.email.replyTo,
+    replyTo: input.replyTo ?? config.email.replyTo,
     subject: input.subject,
   };
 
