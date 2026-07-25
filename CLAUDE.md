@@ -100,7 +100,7 @@ pnpm typecheck            # Type-check all packages
 - `FIREBASE_AUTH_DOMAIN` - Optional, defaults to `{projectId}.firebaseapp.com`
 - `RESEND_API_KEY` - Optional locally; required to send email through Resend
 - `RESEND_FROM_EMAIL` - Optional sender, defaults to `Skate5 <noreply@rivertrail-labs.com>`
-- `RESEND_REPLY_TO` - Optional reply-to override; defaults to `skate5-noreply@mail.rivertrail-labs.com`
+- `RESEND_REPLY_TO` - Optional reply-to override; accepts comma- or semicolon-separated emails; defaults to `skate5-noreply@mail.rivertrail-labs.com`
 - `PORT` - Server port (default 3000)
 
 The frontend has no `.env` — it fetches Firebase config from `GET /api/config` at startup.

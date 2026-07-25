@@ -15,6 +15,7 @@ export const Email = () => {
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
+  const [replyTo, setReplyTo] = useState("");
   const [subject, setSubject] = useState("");
   const [text, setText] = useState("");
   const [html, setHtml] = useState("");
@@ -27,11 +28,13 @@ export const Email = () => {
       to: splitEmailList(to),
       cc: splitEmailList(cc),
       bcc: splitEmailList(bcc),
+      replyTo:
+        splitEmailList(replyTo).length > 0 ? splitEmailList(replyTo) : undefined,
       subject,
       text: text.trim() || undefined,
       html: html.trim() || undefined,
     });
-  }, [to, cc, bcc, subject, text, html]);
+  }, [to, cc, bcc, replyTo, subject, text, html]);
 
   const validationMessage = parsedBody.success
     ? null
@@ -53,6 +56,7 @@ export const Email = () => {
       setTo("");
       setCc("");
       setBcc("");
+      setReplyTo("");
       setSubject("");
       setText("");
       setHtml("");
@@ -123,6 +127,18 @@ export const Email = () => {
               />
             </label>
           </div>
+
+          <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+            Reply-To
+            <input
+              value={replyTo}
+              onChange={(event) => {
+                setReplyTo(event.currentTarget.value);
+              }}
+              placeholder="coach@example.com, office@example.com"
+              className="h-10 rounded-md border border-border bg-background/80 px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
 
           <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
             Subject

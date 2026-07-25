@@ -23,6 +23,16 @@ const optionalNonEmptyStringSchema = z.preprocess(
   z.string().min(1).optional()
 );
 
+const optionalEmailListSchema = z.preprocess((value) => {
+  if (value === "") return undefined;
+  if (typeof value !== "string") return value;
+
+  return value
+    .split(/[,;]+/)
+    .map((email) => email.trim())
+    .filter((email) => email.length > 0);
+}, z.array(z.email()).min(1).optional());
+
 const portSchema = z.preprocess(
   emptyStringToUndefined,
   z.coerce.number().int().positive().default(3000)
@@ -61,7 +71,7 @@ const envSchema = z.object({
   FIREBASE_AUTH_DOMAIN: optionalNonEmptyStringSchema,
   RESEND_API_KEY: optionalNonEmptyStringSchema,
   RESEND_FROM_EMAIL: optionalNonEmptyStringSchema,
-  RESEND_REPLY_TO: optionalNonEmptyStringSchema,
+  RESEND_REPLY_TO: optionalEmailListSchema,
   RAILWAY_GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   GIT_COMMIT_SHA: optionalNonEmptyStringSchema,
   COMMIT_SHA: optionalNonEmptyStringSchema,
@@ -144,7 +154,7 @@ export const config = {
   email: {
     resendApiKey: env.RESEND_API_KEY,
     fromEmail: env.RESEND_FROM_EMAIL ?? "Skate5 <noreply@rivertrail-labs.com>",
-    replyTo: env.RESEND_REPLY_TO ?? "skate5-noreply@mail.rivertrail-labs.com",
+    replyTo: env.RESEND_REPLY_TO ?? ["skate5-noreply@mail.rivertrail-labs.com"],
   },
   commitSha:
     env.RAILWAY_GIT_COMMIT_SHA ??
@@ -155,11 +165,12 @@ export const config = {
 };
 
 const formatDiagnosticValue = (
-  value: string | number | undefined,
+  value: string | number | string[] | undefined,
   sensitive: boolean
 ): string | null => {
   if (value === undefined || value === "") return null;
   if (sensitive) return "Set";
+  if (Array.isArray(value)) return value.join(", ");
   return String(value);
 };
 

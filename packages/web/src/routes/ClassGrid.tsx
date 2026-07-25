@@ -53,6 +53,8 @@ import type {
 const adminActionClassName =
   "border-amber-300/80 bg-amber-50/80 text-amber-950 shadow-sm shadow-amber-900/5 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100";
 
+const gridEmailStaffReplyTo = "staff.schedule@skatejourneys.org";
+
 const uniqueStrings = (values: string[]): string[] => {
   return [...new Set(values)];
 };
@@ -450,11 +452,13 @@ const GridEmailDialog = ({
   grid,
   instructorById,
   generatedBy,
+  defaultReplyTo,
   onClose,
 }: {
   grid: ClassGridResponse;
   instructorById: Map<string, GridInstructor>;
   generatedBy: string;
+  defaultReplyTo: string;
   onClose: () => void;
 }) => {
   const gridUrl = `${window.location.origin}/classes/${grid.class.id}/grid`;
@@ -464,6 +468,7 @@ const GridEmailDialog = ({
   const [subject, setSubject] = useState(
     `Grid for ${getDateLabel(grid.class.date)}`
   );
+  const [replyTo, setReplyTo] = useState(defaultReplyTo);
   const [message, setMessage] = useState(getDefaultGridEmailMessage(grid));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -495,11 +500,13 @@ const GridEmailDialog = ({
   const parsedEmail = useMemo(() => {
     return sendEmailSchema.safeParse({
       to: splitEmailList(recipients),
+      replyTo:
+        splitEmailList(replyTo).length > 0 ? splitEmailList(replyTo) : undefined,
       subject,
       text,
       html,
     });
-  }, [recipients, subject, text, html]);
+  }, [recipients, replyTo, subject, text, html]);
 
   const validationMessage = (() => {
     if (parsedEmail.success) return null;
@@ -514,6 +521,10 @@ const GridEmailDialog = ({
 
     if (firstPath === "subject") {
       return "Add a subject.";
+    }
+
+    if (firstPath === "replyTo") {
+      return "Check the reply-to email address.";
     }
 
     return firstIssue.message;
@@ -598,6 +609,18 @@ const GridEmailDialog = ({
                 }}
                 rows={3}
                 className="resize-y rounded-md border border-border bg-background px-3 py-2 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+
+            <label className="grid gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              Reply-To
+              <input
+                value={replyTo}
+                onChange={(event) => {
+                  setReplyTo(event.currentTarget.value);
+                }}
+                placeholder="Replies use the server default if blank"
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm normal-case text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </label>
 
@@ -1142,6 +1165,12 @@ export const ClassGrid = () => {
           grid={grid}
           instructorById={instructorById}
           generatedBy={profile?.displayName ?? "Skate5"}
+          defaultReplyTo={uniqueStrings([
+            profile?.email ?? "",
+            gridEmailStaffReplyTo,
+          ])
+            .filter((email) => email.length > 0)
+            .join(", ")}
           onClose={() => {
             setEmailDialogOpen(false);
           }}

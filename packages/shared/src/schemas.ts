@@ -293,6 +293,7 @@ export const sendEmailSchema = z
     to: emailAddressListSchema.min(1),
     cc: emailAddressListSchema.default([]),
     bcc: emailAddressListSchema.default([]),
+    replyTo: emailAddressListSchema.optional(),
     subject: z.string().trim().min(1).max(200),
     text: z.string().trim().max(50_000).optional(),
     html: z.string().trim().max(100_000).optional(),
