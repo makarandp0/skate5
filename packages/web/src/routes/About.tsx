@@ -8,6 +8,7 @@ import {
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import skateJourneysIcon from "../assets/skate-journeys-icon.jpg";
+import rivertrailLabsLogo from "../assets/rivertrail-labs-logo.png";
 import { createQrMatrix } from "../lib/qr.js";
 
 const getDefaultAppUrl = (): string => {
@@ -138,25 +139,47 @@ export const About = () => {
       </section>
 
       <section>
-        <Card className="space-y-4">
-          <div className="flex items-center gap-2">
+        <Card className="space-y-5">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Code2 size={18} />
-            <h2 className="font-medium">Developer</h2>
+            <h2 className="font-medium text-foreground">Developer</h2>
           </div>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>Built and maintained by River Trail Labs.</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-white shadow-sm shadow-slate-900/10"
+              >
+                <img
+                  src={rivertrailLabsLogo}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">Rivertrail Labs</p>
+                <p className="text-sm text-muted-foreground">
+                  Built and maintained for the SkateJourney crew.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <a
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-3 text-sm font-semibold text-background shadow-sm shadow-slate-900/10 transition-colors hover:bg-foreground/90"
                 href="https://www.rivertrail-labs.com/"
                 rel="noreferrer"
                 target="_blank"
               >
+                <img
+                  src={rivertrailLabsLogo}
+                  alt=""
+                  className="h-5 w-5 rounded-full bg-white"
+                />
+                Rivertrail Labs
                 <ExternalLink size={16} />
-                River Trail Labs
               </a>
               <a
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-muted/50 px-3 font-mono text-xs font-semibold uppercase text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 href="https://github.com/makarandp0/skate5"
                 rel="noreferrer"
                 target="_blank"

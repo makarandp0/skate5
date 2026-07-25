@@ -63,14 +63,14 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+      <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
         <Link
           to="/"
-          className="group flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span
             aria-hidden="true"
-            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-white p-1 shadow-sm shadow-slate-900/10"
+            className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-white p-0.5 shadow-sm shadow-slate-900/10 sm:h-14 sm:w-14"
           >
             <img
               src={skateJourneysIcon}
