@@ -3,7 +3,6 @@ import {
   Clipboard,
   Code2,
   ExternalLink,
-  Github,
   QrCode,
 } from "lucide-react";
 import { Button } from "../components/ui/Button.js";
@@ -185,7 +184,7 @@ export const About = () => {
                 rel="noreferrer"
                 target="_blank"
               >
-                <Github size={16} />
+                <Code2 size={16} />
                 Source
                 <ExternalLink size={14} />
               </a>
