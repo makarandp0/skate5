@@ -53,6 +53,8 @@ import type {
 const adminActionClassName =
   "border-amber-300/80 bg-amber-50/80 text-amber-950 shadow-sm shadow-amber-900/5 dark:border-amber-400/30 dark:bg-amber-300/10 dark:text-amber-100";
 
+const gridEmailStaffReplyTo = "staff.schedule@skatejourneys.org";
+
 const uniqueStrings = (values: string[]): string[] => {
   return [...new Set(values)];
 };
@@ -1163,7 +1165,12 @@ export const ClassGrid = () => {
           grid={grid}
           instructorById={instructorById}
           generatedBy={profile?.displayName ?? "Skate5"}
-          defaultReplyTo={profile?.email ?? ""}
+          defaultReplyTo={uniqueStrings([
+            profile?.email ?? "",
+            gridEmailStaffReplyTo,
+          ])
+            .filter((email) => email.length > 0)
+            .join(", ")}
           onClose={() => {
             setEmailDialogOpen(false);
           }}
