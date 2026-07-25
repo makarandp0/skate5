@@ -282,12 +282,17 @@ export const Login = () => {
     ? "Reset your password"
     : isSignUp
       ? "Create your Skate5 account"
-      : "Skate5";
+      : "Welcome To Skate Journeys";
   const description = isPasswordReset
     ? "Enter the email you use for the Issaquah pilot and Firebase will send a password reset link."
     : isSignUp
       ? "Create an account for class RSVPs and crew coordination."
       : "Sign in to view classes and RSVP.";
+  const formTitle = isPasswordReset
+    ? "Password reset"
+    : isSignUp
+      ? "Create your account"
+      : "Log in to your account";
   const primaryActionLabel = submitting
     ? "Please wait..."
     : isPasswordReset
@@ -299,45 +304,32 @@ export const Login = () => {
         : "Sign in";
 
   return (
-    <div className="mx-auto grid min-h-[68vh] max-w-3xl items-center gap-6 md:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="hidden md:block">
-        <div className="rounded-lg border border-border/80 bg-background/75 p-5 shadow-lg shadow-slate-900/10 backdrop-blur">
+    <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-2xl flex-col items-stretch justify-center gap-6 py-3 sm:py-8">
+      <section className="text-center">
+        <div className="mx-auto max-w-xl px-1">
           <img
             src={brandBanner}
             alt="Skate Journeys"
-            className="h-auto w-full rounded-md bg-white p-3"
+            className="h-auto w-full rounded-md bg-white p-3 shadow-lg shadow-slate-900/10"
           />
-          <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-medium text-muted-foreground">
-            <span className="rounded-md bg-primary/10 px-2 py-2 text-primary">
-              Classes
-            </span>
-            <span className="rounded-md bg-secondary/25 px-2 py-2 text-secondary-foreground">
-              RSVPs
-            </span>
-            <span className="rounded-md bg-accent/10 px-2 py-2 text-accent">
-              Crews
-            </span>
-          </div>
         </div>
-      </div>
+        <h1 className="mt-6 text-xl font-bold text-primary sm:text-2xl">
+          {title}
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          {description}
+        </p>
+      </section>
 
       <form
         ref={formRef}
-        className="rounded-lg border border-border/80 bg-background/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur sm:p-6"
+        className="mx-auto w-full max-w-xl rounded-lg border border-border/80 bg-background/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur sm:p-6"
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
       >
         <div className="mb-5">
-          <img
-            src={brandBanner}
-            alt="Skate Journeys"
-            className="mb-5 h-auto w-48 rounded-md bg-white p-2 shadow-sm md:hidden"
-          />
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="text-base font-semibold">{formTitle}</p>
         </div>
 
         <div className="space-y-4">
