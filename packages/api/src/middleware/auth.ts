@@ -7,6 +7,8 @@ import {
 } from "@skate5/shared";
 import { db } from "../db/index.js";
 import {
+  recordAppSessionSeen,
+  recordRoleAssumed,
   recordUserCreated,
   recordUserLoggedIn,
 } from "../lib/system-events.js";
@@ -24,6 +26,8 @@ declare module "fastify" {
     user?: AuthUser;
   }
 }
+
+const sessionSeenThrottleMs = 12 * 60 * 60 * 1000;
 
 export const authenticate = async (
   request: FastifyRequest,
@@ -51,6 +55,7 @@ export const authenticate = async (
       "display_name",
       "role",
       "last_login_at",
+      "last_seen_at",
       "deleted_at",
     ])
     .where("firebase_uid", "=", decoded.uid)
@@ -73,6 +78,7 @@ export const authenticate = async (
         photo_url: photoUrl,
         role: "member",
         last_login_at: tokenAuthTime,
+        last_seen_at: tokenAuthTime,
       })
       .returning([
         "id",
@@ -80,6 +86,7 @@ export const authenticate = async (
         "display_name",
         "role",
         "last_login_at",
+        "last_seen_at",
         "deleted_at",
       ])
       .executeTakeFirstOrThrow();
@@ -137,6 +144,38 @@ export const authenticate = async (
   const effectiveRole = requestedRole ?? actualRole;
   if (!canAssumeRole(actualRole, effectiveRole)) {
     return reply.status(403).send({ error: "Cannot assume effective role" });
+  }
+
+  if (requestedRole && requestedRole !== actualRole) {
+    await recordRoleAssumed({
+      userId: row.id,
+      actualRole,
+      assumedRole: requestedRole,
+    });
+  }
+
+  const shouldRecordSessionSeen =
+    !row.last_seen_at ||
+    row.last_seen_at.getTime() < Date.now() - sessionSeenThrottleMs;
+
+  if (shouldRecordSessionSeen) {
+    const seenAt = new Date();
+    await db
+      .updateTable("users")
+      .set({ last_seen_at: seenAt })
+      .where("id", "=", row.id)
+      .execute();
+
+    row = {
+      ...row,
+      last_seen_at: seenAt,
+    };
+
+    await recordAppSessionSeen({
+      userId: row.id,
+      role: effectiveRole,
+      actualRole,
+    });
   }
 
   request.user = {

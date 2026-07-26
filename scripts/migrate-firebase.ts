@@ -438,6 +438,7 @@ await db.transaction().execute(async (trx) => {
   // If --force, clear tables in reverse FK order
   if (forceFlag) {
     console.log("Deleting existing data...");
+    await trx.deleteFrom("system_events").execute();
     await trx.deleteFrom("grid_entries").execute();
     await trx.deleteFrom("signups").execute();
     await trx.deleteFrom("classes").execute();

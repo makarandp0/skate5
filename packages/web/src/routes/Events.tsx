@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Calendar,
+  CheckCircle2,
   Mail,
+  MessageSquare,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -62,17 +64,25 @@ const stringifyMetadataValue = (value: unknown): string => {
 
 const getEventIcon = (eventType: SystemEventType): LucideIcon => {
   switch (eventType) {
+    case "app.session_seen":
+      return Activity;
     case "auth.login":
     case "auth.logout":
+    case "role.assumed":
       return ShieldCheck;
     case "class.created":
     case "class.deleted":
     case "class.updated":
+    case "class.viewed":
     case "grid.published":
     case "grid.unpublished":
       return Calendar;
+    case "chat.message_sent":
+      return MessageSquare;
     case "email.sent":
       return Mail;
+    case "rsvp.changed":
+      return CheckCircle2;
     case "user.created":
     case "user.deleted":
     case "user.role_changed":
@@ -86,18 +96,24 @@ const getEventIcon = (eventType: SystemEventType): LucideIcon => {
 
 const getEventToneClassName = (eventType: SystemEventType): string => {
   switch (eventType) {
+    case "app.session_seen":
     case "auth.login":
     case "auth.logout":
+    case "role.assumed":
       return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-200";
     case "class.created":
     case "class.deleted":
     case "class.updated":
+    case "class.viewed":
       return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-200";
     case "grid.published":
     case "grid.unpublished":
       return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200";
+    case "chat.message_sent":
     case "email.sent":
       return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/70 dark:bg-violet-950/40 dark:text-violet-200";
+    case "rsvp.changed":
+      return "border-lime-200 bg-lime-50 text-lime-700 dark:border-lime-900/70 dark:bg-lime-950/40 dark:text-lime-200";
     case "user.created":
     case "user.deleted":
     case "user.role_changed":

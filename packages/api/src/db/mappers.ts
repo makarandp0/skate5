@@ -32,6 +32,7 @@ interface UserRow {
   photo_url: string | null;
   role: string;
   last_login_at: Date | null;
+  last_seen_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -52,6 +53,7 @@ export const toUser = (row: UserRow, effectiveRole?: UserRole): User => {
     role: effectiveRole ?? actualRole,
     actualRole,
     lastLoginAt: row.last_login_at?.toISOString() ?? null,
+    lastSeenAt: row.last_seen_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -65,6 +67,7 @@ export const toManagedUser = (row: UserRow): ManagedUser => {
     photoUrl: row.photo_url,
     role: assertUserRole(row.role),
     lastLoginAt: row.last_login_at?.toISOString() ?? null,
+    lastSeenAt: row.last_seen_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   });

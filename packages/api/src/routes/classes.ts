@@ -41,8 +41,11 @@ import {
   recordClassCreated,
   recordClassDeleted,
   recordClassUpdated,
+  recordClassViewed,
+  recordChatMessageSent,
   recordEmailSent,
   recordGridPublished,
+  recordRsvpChanged,
   recordUserDeleted,
   recordUserLoggedOut,
   recordUserRoleChanged,
@@ -1086,8 +1089,20 @@ const handlers: RouteHandlers = {
     return getLocations({ activeOnly: true });
   },
 
-  getClass: async ({ params }) => {
-    return getClassById(params.id);
+  getClass: async ({ params, user }) => {
+    const skateClass = await getClassById(params.id);
+
+    if (skateClass) {
+      await recordClassViewed({
+        actorUserId: user.uid,
+        classId: skateClass.id,
+        date: skateClass.date,
+        time: skateClass.time,
+        locationSlug: skateClass.locationSlug,
+      });
+    }
+
+    return skateClass;
   },
 
   createClass: async ({ body, user }) => {
@@ -1259,6 +1274,19 @@ const handlers: RouteHandlers = {
     });
     if (previousRsvp !== body.rsvp) {
       const userDisplayName = await getUserDisplayName(user.uid);
+      const skateClass = await getClassById(params.id);
+      if (!skateClass) {
+        throw new HttpError(404, "Class not found");
+      }
+
+      await recordRsvpChanged({
+        actorUserId: user.uid,
+        subjectUserId: user.uid,
+        classId: params.id,
+        date: skateClass.date,
+        previousRsvp,
+        nextRsvp: body.rsvp,
+      });
       await createSystemClassMessage({
         classId: params.id,
         userId: user.uid,
@@ -1284,6 +1312,19 @@ const handlers: RouteHandlers = {
     });
 
     if (previousRsvp !== body.rsvp) {
+      const skateClass = await getClassById(params.id);
+      if (!skateClass) {
+        throw new HttpError(404, "Class not found");
+      }
+
+      await recordRsvpChanged({
+        actorUserId: user.uid,
+        subjectUserId: params.userId,
+        classId: params.id,
+        date: skateClass.date,
+        previousRsvp,
+        nextRsvp: body.rsvp,
+      });
       await createSystemClassMessage({
         classId: params.id,
         userId: user.uid,
@@ -1302,12 +1343,24 @@ const handlers: RouteHandlers = {
 
   sendClassChatMessage: async ({ params, body, user }) => {
     const chat = await getOrCreateClassChat(params.id);
-    return createChatMessage({
+    const text = body.text.trim();
+    const message = await createChatMessage({
       chatId: chat.id,
       userId: user.uid,
       kind: "user",
-      text: body.text.trim(),
+      text,
     });
+
+    await recordChatMessageSent({
+      actorUserId: user.uid,
+      chatId: chat.id,
+      classId: params.id,
+      messageId: message.id,
+      kind: message.kind,
+      textLength: text.length,
+    });
+
+    return message;
   },
 
   getBadges: async () => {
@@ -1329,10 +1382,20 @@ const handlers: RouteHandlers = {
   },
 
   getClassGrid: async ({ params, user }) => {
-    return getClassGridResponse({
+    const response = await getClassGridResponse({
       classId: params.id,
       canManage: canAssumeRole(user.role, "admin"),
     });
+
+    await recordClassViewed({
+      actorUserId: user.uid,
+      classId: response.class.id,
+      date: response.class.date,
+      time: response.class.time,
+      locationSlug: response.class.locationSlug,
+    });
+
+    return response;
   },
 
   createClassGridEntry: async ({ params, body, user }) => {
