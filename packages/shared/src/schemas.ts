@@ -31,14 +31,19 @@ export const classStatusSchema = z.enum([
 export const chatMessageKindSchema = z.enum(["user", "system"]);
 
 export const systemEventTypeSchema = z.enum([
+  "app.session_seen",
   "auth.login",
   "auth.logout",
   "class.created",
   "class.deleted",
   "class.updated",
+  "class.viewed",
+  "chat.message_sent",
   "email.sent",
   "grid.published",
   "grid.unpublished",
+  "role.assumed",
+  "rsvp.changed",
   "user.created",
   "user.deleted",
   "user.role_changed",
@@ -66,6 +71,7 @@ export const userSchema = z.object({
   role: userRoleSchema,
   actualRole: userRoleSchema,
   lastLoginAt: z.iso.datetime().nullable(),
+  lastSeenAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -77,6 +83,7 @@ export const managedUserSchema = z.object({
   photoUrl: z.string().nullable(),
   role: userRoleSchema,
   lastLoginAt: z.iso.datetime().nullable(),
+  lastSeenAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

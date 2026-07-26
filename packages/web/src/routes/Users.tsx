@@ -35,7 +35,7 @@ type DraftUserChange = {
   role: ManageableUserRole | null;
 };
 
-type UserSortKey = "lastLoginAt" | "createdAt";
+type UserSortKey = "lastSeenAt" | "createdAt";
 type SortDirection = "asc" | "desc";
 
 type UserSort = {
@@ -167,10 +167,10 @@ const parseSortSelectValue = (value: string): UserSort => {
   switch (value) {
     case "default":
       return { key: null, direction: "desc" };
-    case "lastLoginAt:desc":
-      return { key: "lastLoginAt", direction: "desc" };
-    case "lastLoginAt:asc":
-      return { key: "lastLoginAt", direction: "asc" };
+    case "lastSeenAt:desc":
+      return { key: "lastSeenAt", direction: "desc" };
+    case "lastSeenAt:asc":
+      return { key: "lastSeenAt", direction: "asc" };
     case "createdAt:desc":
       return { key: "createdAt", direction: "desc" };
     case "createdAt:asc":
@@ -566,8 +566,8 @@ export const Users = () => {
               className="bg-transparent font-medium text-foreground outline-none"
             >
               <option value="default">Default order</option>
-              <option value="lastLoginAt:desc">Last login: newest</option>
-              <option value="lastLoginAt:asc">Last login: oldest</option>
+              <option value="lastSeenAt:desc">Last seen: newest</option>
+              <option value="lastSeenAt:asc">Last seen: oldest</option>
               <option value="createdAt:desc">Joined: newest</option>
               <option value="createdAt:asc">Joined: oldest</option>
             </select>
@@ -581,9 +581,9 @@ export const Users = () => {
                 <th className="pb-2 pr-3 font-semibold">User</th>
                 <th className="px-3 pb-2 font-semibold">Role</th>
                 <SortableHeader
-                  label="Last login"
+                  label="Last seen"
                   sort={sort}
-                  sortKey="lastLoginAt"
+                  sortKey="lastSeenAt"
                   onToggle={(sortKey) => {
                     setSort((currentSort) => getNextSort(currentSort, sortKey));
                   }}
@@ -650,7 +650,7 @@ export const Users = () => {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right text-xs text-muted-foreground">
-                        {formatDateTime(user.lastLoginAt)}
+                        {formatDateTime(user.lastSeenAt)}
                       </td>
                       <td className="py-3 pl-3 text-right text-xs text-muted-foreground">
                         {formatDate(user.createdAt)}
@@ -926,7 +926,7 @@ export const Users = () => {
                   </div>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Last login {formatDateTime(user.lastLoginAt)}
+                  Last seen {formatDateTime(user.lastSeenAt)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Joined {formatDate(user.createdAt)}
