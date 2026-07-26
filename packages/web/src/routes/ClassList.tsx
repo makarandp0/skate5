@@ -154,7 +154,7 @@ const ClassListDayCards = ({
         const showStatus = shouldShowClassStatus(
           skateClass.status,
           canManageClasses
-        );
+        ) && skateClass.status !== "published";
 
         return (
           <article
@@ -177,7 +177,7 @@ const ClassListDayCards = ({
               skateClass={skateClass}
               currentUserRsvp={canRsvp ? skateClass.currentUserRsvp : undefined}
               className={cn(
-                "pointer-events-none relative z-10 min-h-32 rounded-lg",
+                "pointer-events-none relative z-10 min-h-32 rounded-lg transition-all duration-200 group-hover/class:-translate-y-0.5 group-hover/class:shadow-lg group-hover/class:shadow-primary/10",
                 day.isPast && "grayscale"
               )}
             />

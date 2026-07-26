@@ -74,7 +74,8 @@ export const StatusBadge = ({ status }: { status: SkateClass["status"] }) => {
       className={cn(
         "inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase leading-none",
         status === "published" && "bg-accent/10 text-accent",
-        status === "draft" && "bg-secondary/25 text-secondary-foreground",
+        status === "draft" &&
+          "border border-amber-300 bg-amber-100 text-amber-900 shadow-sm shadow-amber-900/10 dark:border-amber-400/40 dark:bg-amber-300/20 dark:text-amber-100",
         status === "cancelled" && "bg-red-100 text-red-700",
         status === "deleted" && "bg-slate-200 text-slate-700"
       )}
@@ -276,7 +277,7 @@ export const ClassIcon = ({
     ? dateParts.monthLabel
     : date.toLocaleDateString(undefined, { month: "long" });
   const rsvpPresentation =
-    currentUserRsvp === undefined
+    currentUserRsvp === undefined || currentUserRsvp === "none"
       ? null
       : getClassIconRsvpPresentation(currentUserRsvp);
 
@@ -285,7 +286,7 @@ export const ClassIcon = ({
       className={cn(
         "relative flex flex-shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-calendar-paper pl-6 text-calendar-paper-foreground shadow-md shadow-slate-900/10 ring-1 ring-black/5",
         rsvpPresentation && "pr-7",
-        large ? "w-44" : "w-36",
+        large ? "w-48" : "w-40",
         className
       )}
     >
