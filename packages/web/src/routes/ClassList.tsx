@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  ArrowRight,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
@@ -20,7 +19,7 @@ import {
 import { Button } from "../components/ui/Button.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
 import { cn } from "../lib/utils.js";
-import type { ClassListItem, RsvpStatus } from "@skate5/shared";
+import type { ClassListItem } from "@skate5/shared";
 
 type ClassListDay = {
   key: string;
@@ -137,53 +136,6 @@ const getClassListDays = (
     }));
 };
 
-const getRsvpLabel = (rsvp: RsvpStatus): string => {
-  switch (rsvp) {
-    case "yes":
-      return "Going";
-    case "maybe":
-      return "Maybe";
-    case "no":
-      return "Not going";
-    case "none":
-      return "No RSVP";
-    default:
-      rsvp satisfies never;
-      return rsvp;
-  }
-};
-
-const getRsvpActionLabel = (rsvp: RsvpStatus): string => {
-  switch (rsvp) {
-    case "yes":
-      return "Open";
-    case "maybe":
-    case "no":
-      return "Change";
-    case "none":
-      return "RSVP";
-    default:
-      rsvp satisfies never;
-      return rsvp;
-  }
-};
-
-const getRsvpClassName = (rsvp: RsvpStatus): string => {
-  switch (rsvp) {
-    case "yes":
-      return "bg-accent text-accent-foreground";
-    case "maybe":
-      return "bg-secondary/25 text-secondary-foreground";
-    case "no":
-      return "bg-red-100 text-red-700";
-    case "none":
-      return "bg-muted text-muted-foreground";
-    default:
-      rsvp satisfies never;
-      return rsvp;
-  }
-};
-
 const countClassesInDays = (days: ClassListDay[]): number => {
   return days.reduce((total, day) => total + day.classes.length, 0);
 };
@@ -202,20 +154,13 @@ const ClassListDayCards = ({
         const showStatus = shouldShowClassStatus(
           skateClass.status,
           canManageClasses
-        );
-        const actionLabel = day.isPast
-          ? "View"
-          : canRsvp
-            ? getRsvpActionLabel(skateClass.currentUserRsvp)
-            : "Open";
-        const showCurrentRsvp =
-          canRsvp && skateClass.currentUserRsvp !== "none";
+        ) && skateClass.status !== "published";
 
         return (
           <article
             key={skateClass.id}
             className={cn(
-              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+              "group/class relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all",
               !day.isPast &&
                 "hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0",
               day.isToday &&
@@ -230,8 +175,9 @@ const ClassListDayCards = ({
             />
             <ClassIcon
               skateClass={skateClass}
+              currentUserRsvp={canRsvp ? skateClass.currentUserRsvp : undefined}
               className={cn(
-                "pointer-events-none relative z-10 min-h-32 rounded-lg",
+                "pointer-events-none relative z-10 min-h-32 rounded-lg transition-all duration-200 group-hover/class:-translate-y-0.5 group-hover/class:shadow-lg group-hover/class:shadow-primary/10",
                 day.isPast && "grayscale"
               )}
             />
@@ -252,30 +198,6 @@ const ClassListDayCards = ({
               </div>
 
               <ClassPills pills={skateClass.pills} className="mt-2" />
-            </div>
-
-            <div className="pointer-events-none relative z-10 col-span-2 flex flex-wrap items-center gap-2 self-center sm:col-span-1 sm:justify-end">
-              {showCurrentRsvp && (
-                <span
-                  className={cn(
-                    "inline-flex min-w-24 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm shadow-slate-900/5",
-                    getRsvpClassName(skateClass.currentUserRsvp)
-                  )}
-                >
-                  {getRsvpLabel(skateClass.currentUserRsvp)}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
-                  day.isPast
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-primary/10 text-primary group-hover/class:bg-primary group-hover/class:text-primary-foreground"
-                )}
-              >
-                {actionLabel}
-                <ArrowRight size={13} />
-              </span>
             </div>
           </article>
         );

@@ -57,6 +57,14 @@ export const ClassDetail = () => {
     () => (skateClass ? getNextClass(skateClass, classes) : null),
     [classes, skateClass]
   );
+  const currentClassListItem = useMemo(() => {
+    if (!skateClass) return null;
+
+    return (
+      classes.find((classListItem) => classListItem.id === skateClass.id) ??
+      null
+    );
+  }, [classes, skateClass]);
 
   useEffect(() => {
     if (!id) return;
@@ -125,6 +133,7 @@ export const ClassDetail = () => {
 
       <ClassFullView
         skateClass={skateClass}
+        currentUserRsvp={currentClassListItem?.currentUserRsvp}
         onClassUpdated={setSkateClass}
         onClassDeleted={handleClassDeleted}
       />
