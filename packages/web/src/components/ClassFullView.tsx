@@ -176,6 +176,7 @@ const RsvpButton = ({
 
 type ClassFullViewProps = {
   skateClass: SkateClass;
+  currentUserRsvp?: RsvpStatus;
   showDateTile?: boolean;
   onClassUpdated?: (skateClass: SkateClass) => void;
   onClassDeleted?: () => void;
@@ -193,6 +194,7 @@ const getClassFormValues = (skateClass: SkateClass): ClassFormValues => {
 
 export const ClassFullView = ({
   skateClass,
+  currentUserRsvp,
   showDateTile = true,
   onClassUpdated,
   onClassDeleted,
@@ -216,7 +218,9 @@ export const ClassFullView = ({
   const [attendanceCounts, setAttendanceCounts] = useState<
     ClassAttendanceResponse["counts"]
   >(emptyAttendance.counts);
-  const [currentRsvp, setCurrentRsvp] = useState<RsvpStatus>("none");
+  const [currentRsvp, setCurrentRsvp] = useState<RsvpStatus>(
+    () => currentUserRsvp ?? "none"
+  );
   const [selectedAttendanceRsvp, setSelectedAttendanceRsvp] =
     useState<RsvpStatus>("yes");
   const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -245,6 +249,10 @@ export const ClassFullView = ({
     skateClass.status,
     skateClass.time,
   ]);
+
+  useEffect(() => {
+    setCurrentRsvp(currentUserRsvp ?? "none");
+  }, [currentUserRsvp, skateClass.id]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -464,6 +472,7 @@ export const ClassFullView = ({
             {showDateTile && (
               <ClassIcon
                 skateClass={skateClass}
+                currentUserRsvp={currentRsvp}
                 size="large"
               />
             )}

@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock, ExternalLink, MapPin, Tag } from "lucide-react";
+import {
+  ArrowRight,
+  Clock,
+  ExternalLink,
+  MapPin,
+  Tag,
+} from "lucide-react";
 import { Card } from "./ui/Card.js";
 import { cn } from "../lib/utils.js";
-import type { Location, SkateClass } from "@skate5/shared";
+import type { ClassListItem, Location, RsvpStatus, SkateClass } from "@skate5/shared";
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}/;
 
@@ -210,12 +216,55 @@ export const LocationBadge = ({
 
 type ClassIconProps = {
   skateClass: Pick<SkateClass, "date" | "location" | "time">;
+  currentUserRsvp?: RsvpStatus;
   size?: "compact" | "large";
   className?: string;
 };
 
+const getClassIconRsvpPresentation = (
+  rsvp: RsvpStatus
+): {
+  label: string;
+  shortLabel: string;
+  className: string;
+} => {
+  switch (rsvp) {
+    case "yes":
+      return {
+        label: "Going",
+        shortLabel: "Going",
+        className: "bg-accent text-accent-foreground",
+      };
+    case "maybe":
+      return {
+        label: "Maybe",
+        shortLabel: "Maybe",
+        className:
+          "bg-amber-200 text-amber-900 dark:bg-amber-300/85 dark:text-amber-950",
+      };
+    case "no":
+      return {
+        label: "Not going",
+        shortLabel: "No",
+        className:
+          "bg-red-600 text-white dark:bg-red-500 dark:text-red-50",
+      };
+    case "none":
+      return {
+        label: "No RSVP",
+        shortLabel: "RSVP",
+        className:
+          "bg-muted text-muted-foreground dark:bg-muted/70 dark:text-muted-foreground",
+      };
+    default:
+      rsvp satisfies never;
+      return rsvp;
+  }
+};
+
 export const ClassIcon = ({
   skateClass,
+  currentUserRsvp,
   size = "compact",
   className,
 }: ClassIconProps) => {
@@ -226,11 +275,16 @@ export const ClassIcon = ({
   const monthLabel = Number.isNaN(date.getTime())
     ? dateParts.monthLabel
     : date.toLocaleDateString(undefined, { month: "long" });
+  const rsvpPresentation =
+    currentUserRsvp === undefined
+      ? null
+      : getClassIconRsvpPresentation(currentUserRsvp);
 
   return (
     <div
       className={cn(
         "relative flex flex-shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-calendar-paper pl-6 text-calendar-paper-foreground shadow-md shadow-slate-900/10 ring-1 ring-black/5",
+        rsvpPresentation && "pr-7",
         large ? "w-44" : "w-36",
         className
       )}
@@ -249,6 +303,26 @@ export const ClassIcon = ({
           {getClassLocationAccentLabel(skateClass.location.shortName)}
         </span>
       </div>
+      {rsvpPresentation && (
+        <div
+          className={cn(
+            "absolute inset-y-0 right-0 flex w-7 items-center justify-center overflow-hidden",
+            rsvpPresentation.className
+          )}
+          title={`Your RSVP: ${rsvpPresentation.label}`}
+          aria-label={`Your RSVP: ${rsvpPresentation.label}`}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "max-h-full whitespace-nowrap font-black uppercase tracking-[0.14em] [writing-mode:vertical-rl]",
+              large ? "text-[11px]" : "text-[9px]"
+            )}
+          >
+            {rsvpPresentation.shortLabel}
+          </span>
+        </div>
+      )}
       <div
         style={{ backgroundColor: skateClass.location.color }}
         className={cn(
@@ -300,9 +374,12 @@ export const ClassCard = ({
   skateClass,
   canManageClasses = false,
 }: {
-  skateClass: SkateClass;
+  skateClass: SkateClass | ClassListItem;
   canManageClasses?: boolean;
 }) => {
+  const currentUserRsvp =
+    "currentUserRsvp" in skateClass ? skateClass.currentUserRsvp : undefined;
+
   return (
     <Card className="group relative flex min-h-32 items-start gap-4 overflow-hidden p-0 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 active:shadow-sm">
       <Link
@@ -311,7 +388,11 @@ export const ClassCard = ({
         className="absolute inset-0 z-0"
       />
       <div className="pointer-events-none relative z-10 flex min-h-32 w-full items-start gap-4">
-        <ClassIcon skateClass={skateClass} className="self-start rounded-r-none border-y-0 border-l-0" />
+        <ClassIcon
+          skateClass={skateClass}
+          currentUserRsvp={currentUserRsvp}
+          className="self-start rounded-r-none border-y-0 border-l-0"
+        />
 
         <div className="flex min-w-0 flex-1 flex-col justify-between py-4 pr-4">
           <div className="flex items-start justify-between gap-3">
