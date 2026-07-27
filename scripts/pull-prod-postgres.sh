@@ -6,8 +6,8 @@ usage() {
 Usage:
   PROD_DATABASE_URL=postgresql://... pnpm db:pull:prod
 
-Clones the production PostgreSQL database into the local Docker database.
-The local database is reset before restore.
+Clones the production PostgreSQL database into the local Docker database by
+creating a .dump backup and restoring that dump locally.
 
 Environment:
   PROD_DATABASE_URL              Production/public PostgreSQL URL to dump from.
@@ -26,6 +26,7 @@ Options:
 EOF
 }
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROD_DATABASE_URL:-${DATABASE_PUBLIC_URL:-${RAILWAY_DATABASE_PUBLIC_URL:-}}}"
 target_url="${LOCAL_DATABASE_URL:-postgresql://postgres:postgres@localhost:5434/skate5}"
 dump_file=""
@@ -136,13 +137,6 @@ if [[ "$source_url" == "$target_url" ]]; then
   exit 1
 fi
 
-for command_name in pg_dump pg_restore psql; do
-  if ! command -v "$command_name" >/dev/null 2>&1; then
-    echo "$command_name is required but was not found on PATH." >&2
-    exit 1
-  fi
-done
-
 if [[ -z "$dump_file" ]]; then
   dump_file="$(mktemp "${TMPDIR:-/tmp}/skate5-prod-postgres.XXXXXX")"
 fi
@@ -169,25 +163,14 @@ if [[ "$assume_yes" != "true" ]]; then
   fi
 fi
 
-echo "Dumping production database..."
-pg_dump \
-  --format=custom \
-  --no-owner \
-  --no-acl \
-  --dbname "$source_url" \
-  --file "$dump_file"
+"$script_dir/dump-postgres.sh" \
+  --source "$source_url" \
+  --output "$dump_file"
 
-echo "Resetting local public schema..."
-psql "$target_url" \
-  --set ON_ERROR_STOP=1 \
-  --command "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO public;"
-
-echo "Restoring dump into local database..."
-pg_restore \
-  --no-owner \
-  --no-acl \
-  --dbname "$target_url" \
-  "$dump_file"
+"$script_dir/restore-postgres.sh" \
+  --target "$target_url" \
+  --dump-file "$dump_file" \
+  --yes
 
 echo "Local database now matches the production dump."
 if [[ "$keep_dump" == "true" ]]; then

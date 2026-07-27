@@ -17,6 +17,8 @@
     "typecheck": "pnpm --filter './packages/*' run typecheck",
     "db:create": "pnpm --filter @skate5/api run db:create",
     "db:migrate": "pnpm --filter @skate5/api run db:migrate",
+    "db:dump": "bash scripts/dump-postgres.sh",
+    "db:restore": "bash scripts/restore-postgres.sh",
     "db:pull:prod": "bash scripts/pull-prod-postgres.sh"
   },
   "devDependencies": {

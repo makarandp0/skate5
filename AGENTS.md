@@ -26,6 +26,8 @@ pnpm install              # Install all dependencies
 pnpm db:up                # Start Postgres via Docker
 pnpm db:create <name>     # Create a new TS migration file
 pnpm db:migrate           # Run pending migrations
+pnpm db:dump              # Dump a Postgres database to a .dump backup
+pnpm db:restore           # Restore a Postgres database from a .dump backup
 pnpm db:pull:prod         # Replace local Postgres with a production dump
 pnpm dev:branch           # Start/reuse one API + web server on branch-derived ports
 pnpm dev:branch:restart   # Restart the branch-derived API + web servers
@@ -63,6 +65,8 @@ pnpm typecheck            # Type-check all packages
 - Migrations are TypeScript files in `packages/api/src/db/migrations/`
 - Create a migration: `pnpm db:create <name>` (generates timestamped `.ts` file with up/down)
 - Run migrations: `pnpm db:migrate`
+- Backup a database: `SOURCE_DATABASE_URL=<postgres-url> pnpm db:dump`
+- Restore from backup: `TARGET_DATABASE_URL=<postgres-url> pnpm db:restore -- --dump-file backups/<file>.dump`
 - Refresh local data from production: `PROD_DATABASE_URL=<Railway public DATABASE_PUBLIC_URL> pnpm db:pull:prod`
 - Use the Kysely query builder; avoid raw SQL unless necessary
 
