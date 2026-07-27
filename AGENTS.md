@@ -1,6 +1,6 @@
 # Skate5
 
-Skateboarding class management platform. Successor to skate4 (Firebase-based). Built on a modern stack designed for AI-assisted development.
+Skateboarding class management platform built on a modern stack designed for AI-assisted development.
 
 ## Stack
 
@@ -26,6 +26,7 @@ pnpm install              # Install all dependencies
 pnpm db:up                # Start Postgres via Docker
 pnpm db:create <name>     # Create a new TS migration file
 pnpm db:migrate           # Run pending migrations
+pnpm db:pull:prod         # Replace local Postgres with a production dump
 pnpm dev:branch           # Start/reuse one API + web server on branch-derived ports
 pnpm dev:branch:restart   # Restart the branch-derived API + web servers
 pnpm dev                  # Start all packages in dev mode
@@ -62,6 +63,7 @@ pnpm typecheck            # Type-check all packages
 - Migrations are TypeScript files in `packages/api/src/db/migrations/`
 - Create a migration: `pnpm db:create <name>` (generates timestamped `.ts` file with up/down)
 - Run migrations: `pnpm db:migrate`
+- Refresh local data from production: `PROD_DATABASE_URL=<Railway public DATABASE_PUBLIC_URL> pnpm db:pull:prod`
 - Use the Kysely query builder; avoid raw SQL unless necessary
 
 ### API
