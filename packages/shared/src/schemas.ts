@@ -93,7 +93,7 @@ export const skateClassSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   pills: z.array(classPillSchema),
-  date: z.string(),
+  date: z.iso.date(),
   time: z.string().nullable(),
   locationSlug: z.string(),
   location: locationSchema,
@@ -171,7 +171,7 @@ export const classGridResponseSchema = z.object({
 
 export const gridCopySourceSchema = z.object({
   classId: z.string(),
-  date: z.string(),
+  date: z.iso.date(),
   time: z.string().nullable(),
   location: locationSchema,
   entryCount: z.int(),

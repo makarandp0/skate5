@@ -68,7 +68,7 @@ pnpm typecheck            # Type-check all packages
 - Backup a database: `pnpm db:dump -- --source <postgres-url>`
 - Restore from backup: `pnpm db:restore -- --target <postgres-url> --input backups/<file>.dump`
 - Refresh local data from production: `pnpm db:pull:prod -- --source <Railway public database URL>`
-- Use the Kysely query builder; avoid raw SQL unless necessary
+- Use Kysely schema/query builder functions in migrations and application code; avoid raw SQL unless it is truly necessary and there is no reasonable Kysely API for the operation
 
 ### API
 - All routes go in `packages/api/src/routes/`

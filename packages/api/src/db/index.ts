@@ -3,6 +3,10 @@ import pg from "pg";
 import { config } from "../config.js";
 import { Database } from "./types.js";
 
+const pgDateOid = 1082;
+
+pg.types.setTypeParser(pgDateOid, (value) => value);
+
 const dialect = new PostgresDialect({
   pool: new pg.Pool({
     connectionString: config.databaseUrl,
