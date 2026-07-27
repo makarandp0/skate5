@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Modern and clean, with a touch of playfulness inspired by skate4. Not corporate-stiff, not cartoon-ish — approachable and warm.
+Modern and clean, with a touch of playfulness. Not corporate-stiff, not cartoon-ish — approachable and warm.
 
 - **Simple use cases (view schedule, RSVP)**: Mobile-first. Must work beautifully on a phone at the skate park.
 - **Administrative use cases (create classes, manage grids, manage badges)**: Desktop-friendly is fine. Admins are typically on laptops.
@@ -162,6 +162,6 @@ The core interaction. Must be fast and satisfying:
 | 2026-06-19 | shadcn/ui primitives | Full control, no bundle bloat, Tailwind-native |
 | 2026-06-19 | Neutral palette with semantic accents | Clean, works in dark mode, accessible |
 | 2026-06-19 | Optimistic RSVP updates | Core action must feel instant |
-| 2026-06-20 | Blue primary accent (#2563eb) | Inspired by skate4's friendly blue; adds warmth without being flashy |
+| 2026-06-20 | Blue primary accent (#2563eb) | Adds warmth without being flashy |
 | 2026-06-20 | Card shadows + hover lift | Subtle depth and micro-interactions make UI feel alive |
 | 2026-06-20 | Class-based dark mode with toggle | User control over theme; persisted in localStorage |

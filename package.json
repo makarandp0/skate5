@@ -17,7 +17,9 @@
     "typecheck": "pnpm --filter './packages/*' run typecheck",
     "db:create": "pnpm --filter @skate5/api run db:create",
     "db:migrate": "pnpm --filter @skate5/api run db:migrate",
-    "db:import": "tsx scripts/migrate-firebase.ts"
+    "db:dump": "bash scripts/dump-postgres.sh",
+    "db:restore": "bash scripts/restore-postgres.sh",
+    "db:pull:prod": "bash scripts/pull-prod-postgres.sh"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
