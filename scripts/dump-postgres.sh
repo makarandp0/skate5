@@ -4,27 +4,20 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  SOURCE_DATABASE_URL=postgresql://... pnpm db:dump
   pnpm db:dump -- --source postgresql://... --output backups/skate5.dump
 
 Dumps a PostgreSQL database to a custom-format .dump file.
 The dump includes schema, data, indexes, sequences, and migration tables.
 
-Environment:
-  SOURCE_DATABASE_URL    PostgreSQL URL to dump from.
-  DATABASE_URL           Fallback PostgreSQL URL to dump from.
-  PROD_DATABASE_URL      Fallback PostgreSQL URL to dump from.
-
 Options:
-  --source <url>         PostgreSQL URL to dump from. Overrides environment.
+  --source <url>         PostgreSQL URL to dump from.
   --output <path>        Output dump path.
                          Default: backups/skate5-YYYYmmdd-HHMMSS.dump
-  --dump-file <path>     Alias for --output.
   --help                 Show this help.
 EOF
 }
 
-source_url="${SOURCE_DATABASE_URL:-${DATABASE_URL:-${PROD_DATABASE_URL:-}}}"
+source_url=""
 dump_file=""
 
 mask_database_url() {
@@ -67,7 +60,7 @@ while [[ $# -gt 0 ]]; do
       source_url="$2"
       shift 2
       ;;
-    --output|--dump-file)
+    --output)
       if [[ $# -lt 2 ]]; then
         echo "$1 requires a path." >&2
         exit 1
@@ -88,7 +81,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$source_url" ]]; then
-  echo "SOURCE_DATABASE_URL is required." >&2
+  echo "--source is required." >&2
   exit 1
 fi
 

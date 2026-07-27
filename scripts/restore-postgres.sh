@@ -4,26 +4,20 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  TARGET_DATABASE_URL=postgresql://... pnpm db:restore -- --dump-file backups/skate5.dump
-  pnpm db:restore -- --target postgresql://... --dump-file backups/skate5.dump
+  pnpm db:restore -- --target postgresql://... --input backups/skate5.dump
 
 Restores a custom-format PostgreSQL .dump file into a target database.
 The target public schema is dropped and recreated before restore.
 
-Environment:
-  TARGET_DATABASE_URL    PostgreSQL URL to restore into.
-  DATABASE_URL           Fallback PostgreSQL URL to restore into.
-  LOCAL_DATABASE_URL     Fallback PostgreSQL URL to restore into.
-
 Options:
-  --target <url>         PostgreSQL URL to restore into. Overrides environment.
-  --dump-file <path>     Dump file to restore from.
+  --target <url>         PostgreSQL URL to restore into.
+  --input <path>         Dump file to restore from.
   --yes                  Skip the destructive confirmation prompt.
   --help                 Show this help.
 EOF
 }
 
-target_url="${TARGET_DATABASE_URL:-${DATABASE_URL:-${LOCAL_DATABASE_URL:-}}}"
+target_url=""
 dump_file=""
 assume_yes="false"
 
@@ -67,9 +61,9 @@ while [[ $# -gt 0 ]]; do
       target_url="$2"
       shift 2
       ;;
-    --dump-file)
+    --input)
       if [[ $# -lt 2 ]]; then
-        echo "--dump-file requires a path." >&2
+        echo "--input requires a path." >&2
         exit 1
       fi
       dump_file="$2"
@@ -92,7 +86,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$target_url" ]]; then
-  echo "TARGET_DATABASE_URL is required." >&2
+  echo "--target is required." >&2
   exit 1
 fi
 
@@ -102,7 +96,7 @@ if [[ "$target_url" != postgres://* && "$target_url" != postgresql://* ]]; then
 fi
 
 if [[ -z "$dump_file" ]]; then
-  echo "--dump-file is required." >&2
+  echo "--input is required." >&2
   exit 1
 fi
 

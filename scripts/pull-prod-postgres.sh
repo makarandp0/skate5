@@ -4,22 +4,16 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  PROD_DATABASE_URL=postgresql://... pnpm db:pull:prod
+  pnpm db:pull:prod -- --source postgresql://...
 
 Clones the production PostgreSQL database into the local Docker database by
 creating a .dump backup and restoring that dump locally.
 
-Environment:
-  PROD_DATABASE_URL              Production/public PostgreSQL URL to dump from.
-  DATABASE_PUBLIC_URL            Fallback production/public PostgreSQL URL.
-  RAILWAY_DATABASE_PUBLIC_URL    Fallback production/public PostgreSQL URL.
-  LOCAL_DATABASE_URL             Local PostgreSQL URL to restore into.
-                                 Default: postgresql://postgres:postgres@localhost:5434/skate5
-
 Options:
-  --source <url>       Production PostgreSQL URL. Overrides environment.
-  --target <url>       Local PostgreSQL URL. Overrides LOCAL_DATABASE_URL.
-  --dump-file <path>   Write the dump at this path instead of a temp file.
+  --source <url>       Production/public PostgreSQL URL to dump from.
+  --target <url>       Local PostgreSQL URL to restore into.
+                       Default: postgresql://postgres:postgres@localhost:5434/skate5
+  --output <path>      Write the dump at this path instead of a temp file.
   --keep-dump          Keep the generated dump file.
   --yes                Skip the destructive confirmation prompt.
   --help               Show this help.
@@ -27,8 +21,8 @@ EOF
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source_url="${PROD_DATABASE_URL:-${DATABASE_PUBLIC_URL:-${RAILWAY_DATABASE_PUBLIC_URL:-}}}"
-target_url="${LOCAL_DATABASE_URL:-postgresql://postgres:postgres@localhost:5434/skate5}"
+source_url=""
+target_url="postgresql://postgres:postgres@localhost:5434/skate5"
 dump_file=""
 keep_dump="false"
 assume_yes="false"
@@ -81,9 +75,9 @@ while [[ $# -gt 0 ]]; do
       target_url="$2"
       shift 2
       ;;
-    --dump-file)
+    --output)
       if [[ $# -lt 2 ]]; then
-        echo "--dump-file requires a path." >&2
+        echo "--output requires a path." >&2
         exit 1
       fi
       dump_file="$2"
@@ -111,8 +105,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$source_url" ]]; then
-  echo "PROD_DATABASE_URL is required." >&2
-  echo "Use Railway's public DATABASE_PUBLIC_URL, not postgres.railway.internal." >&2
+  echo "--source is required." >&2
+  echo "Use Railway's public database URL, not postgres.railway.internal." >&2
   exit 1
 fi
 
@@ -128,7 +122,7 @@ fi
 
 if [[ "$source_url" == *"postgres.railway.internal"* ]]; then
   echo "Production URL points at Railway's private network host." >&2
-  echo "Use Railway's public DATABASE_PUBLIC_URL (*.proxy.rlwy.net) from local machines." >&2
+  echo "Use Railway's public database URL (*.proxy.rlwy.net) from local machines." >&2
   exit 1
 fi
 
@@ -169,7 +163,7 @@ fi
 
 "$script_dir/restore-postgres.sh" \
   --target "$target_url" \
-  --dump-file "$dump_file" \
+  --input "$dump_file" \
   --yes
 
 echo "Local database now matches the production dump."

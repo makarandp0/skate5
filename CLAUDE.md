@@ -65,9 +65,9 @@ pnpm typecheck            # Type-check all packages
 - Migrations are TypeScript files in `packages/api/src/db/migrations/`
 - Create a migration: `pnpm db:create <name>` (generates timestamped `.ts` file with up/down)
 - Run migrations: `pnpm db:migrate`
-- Backup a database: `SOURCE_DATABASE_URL=<postgres-url> pnpm db:dump`
-- Restore from backup: `TARGET_DATABASE_URL=<postgres-url> pnpm db:restore -- --dump-file backups/<file>.dump`
-- Refresh local data from production: `PROD_DATABASE_URL=<Railway public DATABASE_PUBLIC_URL> pnpm db:pull:prod`
+- Backup a database: `pnpm db:dump -- --source <postgres-url>`
+- Restore from backup: `pnpm db:restore -- --target <postgres-url> --input backups/<file>.dump`
+- Refresh local data from production: `pnpm db:pull:prod -- --source <Railway public database URL>`
 - Use the Kysely query builder; avoid raw SQL unless necessary
 
 ### API
