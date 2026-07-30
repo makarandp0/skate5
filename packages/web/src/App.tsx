@@ -8,7 +8,6 @@ import { Login } from "./routes/Login.js";
 import { ClassList } from "./routes/ClassList.js";
 import { ClassCreate } from "./routes/ClassCreate.js";
 import { ClassDetail } from "./routes/ClassDetail.js";
-import { ClassGrid } from "./routes/ClassGrid.js";
 import { ClassChat } from "./routes/ClassChat.js";
 import { Profile } from "./routes/Profile.js";
 import { Email } from "./routes/Email.js";
@@ -86,7 +85,7 @@ export const App = () => {
                 path="/classes/:id/grid"
                 element={
                   <RequireAuth>
-                    <ClassGrid />
+                    <ClassDetail />
                   </RequireAuth>
                 }
               />

@@ -8,12 +8,10 @@ import {
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   AlertCircle,
   CheckCircle2,
   Copy,
-  Grid3X3,
   LoaderCircle,
   Mail,
   Pencil,
@@ -33,10 +31,8 @@ import {
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import {
-  ClassPills,
   ClassIcon,
   getClassDateKey,
-  LocationBadge,
 } from "../components/ClassCard.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
@@ -892,8 +888,15 @@ const GridCopyDialog = ({
   );
 };
 
-export const ClassGrid = () => {
-  const { id } = useParams<{ id: string }>();
+export const ClassGridPanel = ({
+  classId,
+  onClassUpdated,
+}: {
+  classId?: string;
+  onClassUpdated?: (skateClass: ClassGridResponse["class"]) => void;
+}) => {
+  const params = useParams<{ id: string }>();
+  const id = classId ?? params.id;
   const { profile } = useAuth();
   const canManage = profile ? canAssumeRole(profile.role, "admin") : false;
   const [grid, setGrid] = useState<ClassGridResponse | null>(null);
@@ -912,6 +915,7 @@ export const ClassGrid = () => {
       .getClassGrid({ params: { id } })
       .then((response) => {
         setGrid(response);
+        onClassUpdated?.(response.class);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -919,7 +923,7 @@ export const ClassGrid = () => {
         setError("Could not load the grid.");
         setLoading(false);
       });
-  }, [id]);
+  }, [id, onClassUpdated]);
 
   const instructorById = useMemo(() => {
     const map = new Map<string, GridInstructor>();
@@ -942,6 +946,7 @@ export const ClassGrid = () => {
     try {
       const response = await action();
       setGrid(response);
+      onClassUpdated?.(response.class);
       if (!response.entries.some((entry) => entry.id === expandedEntryId)) {
         setExpandedEntryId(null);
       }
@@ -1070,95 +1075,72 @@ export const ClassGrid = () => {
 
   return (
     <div className="space-y-5">
-      <Link
-        to={`/classes/${grid.class.id}`}
-        className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </Link>
-
-      <section className="rounded-lg border border-border/80 bg-background/80 p-4 shadow-sm shadow-slate-900/5 backdrop-blur sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <Grid3X3 size={17} />
-              <span>Class grid</span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">
-              {getDateLabel(grid.class.date)}
-            </h1>
-            <ClassPills pills={grid.class.pills} className="mt-3" />
-            <div className="mt-3">
-              <LocationBadge location={grid.class.location} showAddress />
-            </div>
-          </div>
-
-          {canManage && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCopyDialogOpen(true);
-                }}
-                disabled={savingAny}
-                className={cn("border", adminActionClassName)}
-              >
-                {busyAction === "copy" ? (
-                  <LoaderCircle size={16} className="animate-spin" />
-                ) : (
-                  <Copy size={16} />
-                )}
-                Copy grid
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void handleAddRow();
-                }}
-                disabled={savingAny}
-                className={cn("border", adminActionClassName)}
-              >
-                {busyAction === "add" ? (
-                  <LoaderCircle size={16} className="animate-spin" />
-                ) : (
-                  <Plus size={16} />
-                )}
-                Add row
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  void handlePublishToggle();
-                }}
-                disabled={savingAny}
-                variant={grid.class.gridPublished ? "secondary" : "default"}
-              >
-                {busyAction === "publish" ? (
-                  <LoaderCircle size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-                {grid.class.gridPublished ? "Unpublish" : "Publish"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setEmailDialogOpen(true);
-                }}
-                disabled={savingAny || grid.entries.length === 0}
-                className={cn("border", adminActionClassName)}
-              >
-                <Mail size={16} />
-                Email grid
-              </Button>
-            </div>
-          )}
-        </div>
-      </section>
+      {canManage && (
+        <section
+          aria-label="Grid actions"
+          className="flex flex-wrap gap-2 rounded-lg border border-border/80 bg-background/70 p-3 shadow-sm shadow-slate-900/5"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setCopyDialogOpen(true);
+            }}
+            disabled={savingAny}
+            className={cn("border", adminActionClassName)}
+          >
+            {busyAction === "copy" ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : (
+              <Copy size={16} />
+            )}
+            Copy grid
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void handleAddRow();
+            }}
+            disabled={savingAny}
+            className={cn("border", adminActionClassName)}
+          >
+            {busyAction === "add" ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : (
+              <Plus size={16} />
+            )}
+            Add row
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              void handlePublishToggle();
+            }}
+            disabled={savingAny}
+            variant={grid.class.gridPublished ? "secondary" : "default"}
+          >
+            {busyAction === "publish" ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : (
+              <Send size={16} />
+            )}
+            {grid.class.gridPublished ? "Unpublish" : "Publish"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setEmailDialogOpen(true);
+            }}
+            disabled={savingAny || grid.entries.length === 0}
+            className={cn("border", adminActionClassName)}
+          >
+            <Mail size={16} />
+            Email grid
+          </Button>
+        </section>
+      )}
 
       {canManage && emailDialogOpen && (
         <GridEmailDialog

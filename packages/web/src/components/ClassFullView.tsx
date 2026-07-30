@@ -2,6 +2,7 @@ import {
   useEffect,
   useState,
   type ChangeEvent,
+  type ReactNode,
   type SyntheticEvent,
 } from "react";
 import { Link } from "react-router-dom";
@@ -178,6 +179,8 @@ type ClassFullViewProps = {
   skateClass: SkateClass;
   currentUserRsvp?: RsvpStatus;
   showDateTile?: boolean;
+  activeTab?: "details" | "grid";
+  gridPanel?: ReactNode;
   onClassUpdated?: (skateClass: SkateClass) => void;
   onClassDeleted?: () => void;
 };
@@ -196,6 +199,8 @@ export const ClassFullView = ({
   skateClass,
   currentUserRsvp,
   showDateTile = true,
+  activeTab = "details",
+  gridPanel,
   onClassUpdated,
   onClassDeleted,
 }: ClassFullViewProps) => {
@@ -424,6 +429,14 @@ export const ClassFullView = ({
     attendanceCounts.no +
     attendanceCounts.none;
   const canManageAttendance = canEdit;
+  const showGridTab = canEdit || skateClass.gridPublished || activeTab === "grid";
+  const tabClassName = (tab: "details" | "grid"): string =>
+    cn(
+      "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      activeTab === tab
+        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+        : "border border-border bg-background/70 text-muted-foreground hover:-translate-y-0.5 hover:bg-muted/70 hover:text-foreground active:translate-y-0"
+    );
 
   return (
     <div className="space-y-6">
@@ -494,20 +507,6 @@ export const ClassFullView = ({
                     >
                       <MessageCircle size={14} />
                       Chat
-                    </Link>
-                  )}
-                  {(canEdit || skateClass.gridPublished) && (
-                    <Link
-                      to={`/classes/${skateClass.id}/grid`}
-                      className={cn(
-                        "inline-flex h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0",
-                        canEdit
-                          ? adminActionClassName
-                          : "border-border bg-background/70 hover:bg-muted/70"
-                      )}
-                    >
-                      <Grid3X3 size={14} />
-                      Grid
                     </Link>
                   )}
                   {canEdit && (
@@ -615,6 +614,32 @@ export const ClassFullView = ({
         )}
       </section>
 
+      <nav
+        aria-label="Class sections"
+        className="flex flex-wrap items-center gap-2"
+      >
+        <Link
+          to={`/classes/${skateClass.id}`}
+          className={tabClassName("details")}
+        >
+          <UsersRound size={16} />
+          Details
+        </Link>
+        {showGridTab && (
+          <Link
+            to={`/classes/${skateClass.id}/grid`}
+            className={tabClassName("grid")}
+          >
+            <Grid3X3 size={16} />
+            Grid
+          </Link>
+        )}
+      </nav>
+
+      {activeTab === "grid" ? (
+        gridPanel
+      ) : (
+        <>
       {profile && skateClass.status === "published" && (
         <Card className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -842,6 +867,8 @@ export const ClassFullView = ({
           )}
         </div>
       </Card>
+        </>
+      )}
 
     </div>
   );
