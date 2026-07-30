@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Grid3X3,
 } from "lucide-react";
 import { canAssumeRole } from "@skate5/shared";
 import { api } from "../lib/api.js";
@@ -160,7 +161,7 @@ const ClassListDayCards = ({
           <article
             key={skateClass.id}
             className={cn(
-              "group/class relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all",
+              "group/class relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-border/80 bg-background/90 p-3 text-left shadow-sm shadow-slate-900/5 transition-all",
               !day.isPast &&
                 "hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 active:translate-y-0",
               day.isToday &&
@@ -171,33 +172,53 @@ const ClassListDayCards = ({
             <Link
               to={`/classes/${skateClass.id}`}
               aria-label={getClassLinkLabel(skateClass)}
-              className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <ClassIcon
-              skateClass={skateClass}
-              currentUserRsvp={canRsvp ? skateClass.currentUserRsvp : undefined}
-              className={cn(
-                "pointer-events-none relative z-10 min-h-32 rounded-lg transition-all duration-200 group-hover/class:-translate-y-0.5 group-hover/class:shadow-lg group-hover/class:shadow-primary/10",
-                day.isPast && "grayscale"
+              className="relative z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ClassIcon
+                skateClass={skateClass}
+                currentUserRsvp={
+                  canRsvp ? skateClass.currentUserRsvp : undefined
+                }
+                className={cn(
+                  "pointer-events-none min-h-32 rounded-lg transition-all duration-200 group-hover/class:-translate-y-0.5 group-hover/class:shadow-lg group-hover/class:shadow-primary/10",
+                  day.isPast && "grayscale"
+                )}
+              />
+            </Link>
+
+            <div className="relative z-10 grid min-w-0 gap-3 self-center sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <Link
+                to={`/classes/${skateClass.id}`}
+                aria-label={getClassLinkLabel(skateClass)}
+                className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {showStatus && <StatusBadge status={skateClass.status} />}
+                  {day.isToday && (
+                    <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
+                      Today
+                    </span>
+                  )}
+                  {day.isPast && (
+                    <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">
+                      Past
+                    </span>
+                  )}
+                </div>
+
+                <ClassPills pills={skateClass.pills} className="mt-2" />
+              </Link>
+
+              {skateClass.gridPublished && (
+                <Link
+                  to={`/classes/${skateClass.id}/grid`}
+                  aria-label={`Open ready grid - ${getClassLinkLabel(skateClass)}`}
+                  className="inline-flex h-9 w-fit max-w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-accent px-3 text-xs font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0"
+                >
+                  <Grid3X3 size={14} className="shrink-0" />
+                  <span className="truncate">Grid is Ready</span>
+                </Link>
               )}
-            />
-
-            <div className="pointer-events-none relative z-10 min-w-0 self-center">
-              <div className="flex flex-wrap items-center gap-2">
-                {showStatus && <StatusBadge status={skateClass.status} />}
-                {day.isToday && (
-                  <span className="inline-flex rounded-full bg-primary px-2 py-1 text-[11px] font-bold uppercase text-primary-foreground">
-                    Today
-                  </span>
-                )}
-                {day.isPast && (
-                  <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">
-                    Past
-                  </span>
-                )}
-              </div>
-
-              <ClassPills pills={skateClass.pills} className="mt-2" />
             </div>
           </article>
         );

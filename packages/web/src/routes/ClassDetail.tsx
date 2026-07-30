@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { api } from "../lib/api.js";
 import {
@@ -7,6 +7,7 @@ import {
   getClassSummaryLabel,
 } from "../components/ClassCard.js";
 import { ClassFullView } from "../components/ClassFullView.js";
+import { ClassGridPanel } from "./ClassGrid.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
 import type { ClassListItem, SkateClass } from "@skate5/shared";
 
@@ -49,6 +50,7 @@ const getNextClass = (
 
 export const ClassDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const [skateClass, setSkateClass] = useState<SkateClass | null>(null);
   const [classes, setClasses] = useState<ClassListItem[]>([]);
@@ -103,6 +105,7 @@ export const ClassDetail = () => {
 
   const dateKey = getClassDateKey(skateClass.date);
   const calendarUrl = `/?month=${dateKey.slice(0, 7)}`;
+  const activeTab = location.pathname.endsWith("/grid") ? "grid" : "details";
   const handleClassDeleted = (): void => {
     void navigate(calendarUrl);
   };
@@ -134,6 +137,15 @@ export const ClassDetail = () => {
       <ClassFullView
         skateClass={skateClass}
         currentUserRsvp={currentClassListItem?.currentUserRsvp}
+        activeTab={activeTab}
+        gridPanel={
+          activeTab === "grid" ? (
+            <ClassGridPanel
+              classId={skateClass.id}
+              onClassUpdated={setSkateClass}
+            />
+          ) : null
+        }
         onClassUpdated={setSkateClass}
         onClassDeleted={handleClassDeleted}
       />
