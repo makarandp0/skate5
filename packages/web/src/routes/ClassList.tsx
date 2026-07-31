@@ -64,12 +64,25 @@ const getDefaultMonthDate = (
   todayKey: string,
   fallback: Date
 ): Date => {
-  const upcomingClass = classes.find((skateClass) => {
-    return getClassDateKey(skateClass.date) >= todayKey;
-  });
+  const nextUpcomingDateKey = classes.reduce<string | null>(
+    (closestDateKey, skateClass) => {
+      const classDateKey = getClassDateKey(skateClass.date);
+
+      if (classDateKey < todayKey) {
+        return closestDateKey;
+      }
+
+      if (!closestDateKey || classDateKey < closestDateKey) {
+        return classDateKey;
+      }
+
+      return closestDateKey;
+    },
+    null
+  );
 
   return getInitialMonthDate(
-    upcomingClass ? getClassDateKey(upcomingClass.date).slice(0, 7) : null,
+    nextUpcomingDateKey ? nextUpcomingDateKey.slice(0, 7) : null,
     fallback
   );
 };
