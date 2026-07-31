@@ -59,6 +59,34 @@ const getInitialMonthDate = (monthKey: string | null, fallback: Date): Date => {
   return parsed;
 };
 
+const getDefaultMonthDate = (
+  classes: ClassListItem[],
+  todayKey: string,
+  fallback: Date
+): Date => {
+  const nextUpcomingDateKey = classes.reduce<string | null>(
+    (closestDateKey, skateClass) => {
+      const classDateKey = getClassDateKey(skateClass.date);
+
+      if (classDateKey < todayKey) {
+        return closestDateKey;
+      }
+
+      if (!closestDateKey || classDateKey < closestDateKey) {
+        return classDateKey;
+      }
+
+      return closestDateKey;
+    },
+    null
+  );
+
+  return getInitialMonthDate(
+    nextUpcomingDateKey ? nextUpcomingDateKey.slice(0, 7) : null,
+    fallback
+  );
+};
+
 const getMonthLabel = (date: Date): string => {
   return date.toLocaleDateString(undefined, {
     month: "long",
@@ -228,13 +256,14 @@ const ClassListDayCards = ({
 };
 
 export const ClassList = () => {
-  const today = new Date();
+  const [today] = useState(() => new Date());
   const todayKey = toDateKey(today);
   const [searchParams, setSearchParams] = useSearchParams();
+  const requestedMonth = searchParams.get("month");
   const { profile } = useAuth();
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [monthDate, setMonthDate] = useState(
-    () => getInitialMonthDate(searchParams.get("month"), today)
+    () => getInitialMonthDate(requestedMonth, today)
   );
   const [loading, setLoading] = useState(true);
   const [showPastClasses, setShowPastClasses] = useState(false);
@@ -250,6 +279,17 @@ export const ClassList = () => {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (requestedMonth) {
+      setMonthDate(getInitialMonthDate(requestedMonth, today));
+      return;
+    }
+
+    if (!loading) {
+      setMonthDate(getDefaultMonthDate(classes, todayKey, today));
+    }
+  }, [classes, loading, requestedMonth, today, todayKey]);
 
   const classesByDate = useMemo(() => groupClassesByDate(classes), [classes]);
   const countsByMonth = useMemo(() => countClassesByMonth(classes), [classes]);
