@@ -2,6 +2,7 @@ import {
   Fragment,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -12,8 +13,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Copy,
+  ExternalLink,
   LoaderCircle,
   Mail,
+  MoreHorizontal,
   Pencil,
   Plus,
   Save,
@@ -37,7 +40,11 @@ import {
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
 import { Skeleton } from "../components/ui/Skeleton.js";
-import { splitEmailList } from "../lib/email.js";
+import {
+  createGmailComposeUrl,
+  createOutlookComposeUrl,
+  splitEmailList,
+} from "../lib/email.js";
 import { cn } from "../lib/utils.js";
 import type {
   ClassGridResponse,
@@ -469,6 +476,11 @@ const GridEmailDialog = ({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentId, setSentId] = useState<string | null>(null);
+  const [formattedCopyStatus, setFormattedCopyStatus] = useState<
+    "idle" | "copied" | "failed"
+  >("idle");
+  const [sendOptionsOpen, setSendOptionsOpen] = useState(false);
+  const sendOptionsRef = useRef<HTMLDivElement>(null);
 
   const text = useMemo(
     () =>
@@ -526,9 +538,35 @@ const GridEmailDialog = ({
     return firstIssue.message;
   })();
 
+  useEffect(() => {
+    if (!sendOptionsOpen) return;
+
+    const closeOnOutsideClick = (event: MouseEvent): void => {
+      if (!(event.target instanceof Node)) return;
+      if (sendOptionsRef.current?.contains(event.target)) return;
+      setSendOptionsOpen(false);
+    };
+
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setSendOptionsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [sendOptionsOpen]);
+
   const handleSend = async (): Promise<void> => {
     setError(null);
     setSentId(null);
+    setFormattedCopyStatus("idle");
+    setSendOptionsOpen(false);
 
     if (!parsedEmail.success) {
       setError(validationMessage);
@@ -547,16 +585,66 @@ const GridEmailDialog = ({
     }
   };
 
+  const openComposeUrl = (createUrl: typeof createGmailComposeUrl): void => {
+    setError(null);
+    setSentId(null);
+    setFormattedCopyStatus("idle");
+    setSendOptionsOpen(false);
+
+    if (!parsedEmail.success) {
+      setError(validationMessage);
+      return;
+    }
+
+    window.open(
+      createUrl({
+        to: parsedEmail.data.to,
+        cc: parsedEmail.data.cc,
+        bcc: parsedEmail.data.bcc,
+        subject: parsedEmail.data.subject,
+        body: parsedEmail.data.text ?? parsedEmail.data.html ?? "",
+      }),
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  const copyFormattedEmail = async (): Promise<void> => {
+    setError(null);
+    setSentId(null);
+    setFormattedCopyStatus("idle");
+    setSendOptionsOpen(false);
+
+    try {
+      if (typeof ClipboardItem === "undefined") {
+        await navigator.clipboard.writeText(text);
+      } else {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([text], { type: "text/plain" }),
+          }),
+        ]);
+      }
+
+      setFormattedCopyStatus("copied");
+    } catch (err) {
+      console.error("copy formatted grid email failed:", err);
+      setFormattedCopyStatus("failed");
+      setError("Could not copy the formatted email. Try copying from the preview.");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
       <div
-        className="max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg"
+        className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-lg border border-border bg-background shadow-2xl shadow-black/25 sm:rounded-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="grid-email-title"
         aria-describedby="grid-email-description"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-3">
           <div>
             <h2 id="grid-email-title" className="text-lg font-bold">
               Send grid email
@@ -580,7 +668,7 @@ const GridEmailDialog = ({
           </Button>
         </div>
 
-        <div className="grid max-h-[calc(95vh-140px)] gap-0 overflow-y-auto lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)]">
           <div className="space-y-4 border-b border-border p-4 lg:border-b-0 lg:border-r">
             {error && (
               <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -593,6 +681,13 @@ const GridEmailDialog = ({
               <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
                 <p>Email sent. Resend id: {sentId}</p>
+              </div>
+            )}
+
+            {formattedCopyStatus === "copied" && (
+              <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                <p>Formatted email copied. Paste it into Gmail or Outlook.</p>
               </div>
             )}
 
@@ -664,19 +759,66 @@ const GridEmailDialog = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
           <p className="text-xs text-muted-foreground">
-            Recipients are prefilled from assigned grid instructors.
+            Send with Skate5, or use another option if delivery is delayed.
           </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={sending}
-            >
-              Close
-            </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <div className="relative" ref={sendOptionsRef}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSendOptionsOpen((open) => !open);
+                }}
+                disabled={sending}
+                aria-haspopup="menu"
+                aria-expanded={sendOptionsOpen}
+              >
+                <MoreHorizontal size={16} />
+                More options
+              </Button>
+              {sendOptionsOpen && (
+                <div
+                  className="absolute bottom-full left-0 z-10 mb-2 w-60 overflow-hidden rounded-md border border-border bg-background py-1 text-sm shadow-lg"
+                  role="menu"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-foreground hover:bg-muted"
+                    onClick={() => {
+                      void copyFormattedEmail();
+                    }}
+                    role="menuitem"
+                  >
+                    <Copy size={16} />
+                    Copy formatted email
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-foreground hover:bg-muted"
+                    onClick={() => {
+                      openComposeUrl(createGmailComposeUrl);
+                    }}
+                    role="menuitem"
+                  >
+                    <Mail size={16} />
+                    Open in Gmail
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-foreground hover:bg-muted"
+                    onClick={() => {
+                      openComposeUrl(createOutlookComposeUrl);
+                    }}
+                    role="menuitem"
+                  >
+                    <ExternalLink size={16} />
+                    Open in Outlook
+                  </button>
+                </div>
+              )}
+            </div>
             <Button
               type="button"
               onClick={() => {
@@ -689,7 +831,7 @@ const GridEmailDialog = ({
               ) : (
                 <Mail size={16} />
               )}
-              {sending ? "Sending..." : "Send grid"}
+              {sending ? "Sending..." : "Send with Skate5"}
             </Button>
           </div>
         </div>
