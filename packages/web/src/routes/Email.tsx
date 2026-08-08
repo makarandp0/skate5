@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Mail, Send } from "lucide-react";
 import { sendEmailSchema } from "@skate5/shared";
 import { api } from "../lib/api.js";
 import { Button } from "../components/ui/Button.js";
 import { Card } from "../components/ui/Card.js";
-import { splitEmailList } from "../lib/email.js";
+import {
+  createGmailComposeUrl,
+  createOutlookComposeUrl,
+  splitEmailList,
+} from "../lib/email.js";
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;
@@ -65,6 +69,28 @@ export const Email = () => {
     } finally {
       setSending(false);
     }
+  };
+
+  const openComposeUrl = (createUrl: typeof createGmailComposeUrl): void => {
+    setError(null);
+    setSentId(null);
+
+    if (!parsedBody.success) {
+      setError(validationMessage);
+      return;
+    }
+
+    window.open(
+      createUrl({
+        to: parsedBody.data.to,
+        cc: parsedBody.data.cc,
+        bcc: parsedBody.data.bcc,
+        subject: parsedBody.data.subject,
+        body: parsedBody.data.text ?? parsedBody.data.html ?? "",
+      }),
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   return (
@@ -188,16 +214,40 @@ export const Email = () => {
             Recipients can be separated with commas, semicolons, spaces, or new
             lines.
           </p>
-          <Button
-            type="button"
-            onClick={() => {
-              void send();
-            }}
-            disabled={sending}
-          >
-            <Send size={16} />
-            {sending ? "Sending..." : "Send Email"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                openComposeUrl(createGmailComposeUrl);
+              }}
+              disabled={sending}
+            >
+              <Mail size={16} />
+              Send using Gmail
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                openComposeUrl(createOutlookComposeUrl);
+              }}
+              disabled={sending}
+            >
+              <ExternalLink size={16} />
+              Send using Outlook
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void send();
+              }}
+              disabled={sending}
+            >
+              <Send size={16} />
+              {sending ? "Sending..." : "Send Email"}
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
